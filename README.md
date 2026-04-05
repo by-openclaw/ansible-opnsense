@@ -41,7 +41,7 @@ All modules support `check_mode` and return `changed`, `action`, `uuid`, and `di
 Set OPNsense credentials as environment variables:
 
 ```bash
-export OPN_HOST=10.6.224.106
+export OPN_HOST=opnsense.example.com
 export OPN_KEY=your-api-key
 export OPN_SECRET=your-api-secret
 ```
@@ -73,7 +73,7 @@ export OPN_SECRET=your-api-secret
         key: "{{ opn_key }}"
         secret: "{{ opn_secret }}"
         name: svc-automation
-        email: automation@by-systems.be
+        email: automation@example.com
         state: present
 ```
 

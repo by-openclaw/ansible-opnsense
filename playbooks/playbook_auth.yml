@@ -28,7 +28,7 @@
         key: "{{ opn_key }}"
         secret: "{{ opn_secret }}"
         name: svc-test-automation
-        email: "test@by-systems.be"
+        email: "test@example.com"
         state: present
       register: user_result
 

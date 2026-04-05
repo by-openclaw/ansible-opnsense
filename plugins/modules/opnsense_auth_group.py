@@ -1,7 +1,10 @@
+# Copyright (c) 2026 BY-SYSTEMS SRL. MIT License.
+# SPDX-License-Identifier: MIT
+# Repo: https://github.com/by-openclaw/ansible-opnsense
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2026, BY-SYSTEMS <engineering@by-systems.be>
+# Copyright: (c) 2026, BY-SYSTEMS SRL
 # MIT License (see LICENSE)
 
 """Ansible module for OPNsense local group management via lib-opnsense."""

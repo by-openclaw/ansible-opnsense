@@ -3,7 +3,7 @@ name: opnsense
 version: 0.1.0
 readme: README.md
 authors:
-  - BY-SYSTEMS <engineering@by-systems.be>
+  - BY-SYSTEMS <engineering@example.com>
 description: Ansible collection for OPNsense firewall management via lib-opnsense
 license:
   - MIT

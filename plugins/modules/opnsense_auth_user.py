@@ -1,7 +1,10 @@
+# Copyright (c) 2026 BY-SYSTEMS SRL. MIT License.
+# SPDX-License-Identifier: MIT
+# Repo: https://github.com/by-openclaw/ansible-opnsense
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2026, BY-SYSTEMS <engineering@by-systems.be>
+# Copyright: (c) 2026, BY-SYSTEMS SRL
 # MIT License (see LICENSE)
 
 """Ansible module for OPNsense local user management via lib-opnsense."""
@@ -78,7 +81,7 @@ EXAMPLES = r"""
     key: "{{ opn_key }}"
     secret: "{{ opn_secret }}"
     name: svc-automation
-    email: automation@by-systems.be
+    email: automation@example.com
     description: "CI service account"
     state: present
 
@@ -96,7 +99,7 @@ EXAMPLES = r"""
     key: "{{ opn_key }}"
     secret: "{{ opn_secret }}"
     name: admin-user
-    email: admin@by-systems.be
+    email: admin@example.com
     password: "{{ vault_admin_password }}"
     state: present
   check_mode: true

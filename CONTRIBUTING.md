@@ -28,7 +28,7 @@ ansible-lint plugins/
 Requires a live OPNsense device with API access.
 
 ```bash
-export OPN_HOST=10.6.224.106
+export OPN_HOST=opnsense.example.com
 export OPN_KEY=your-api-key
 export OPN_SECRET=your-api-secret
 
