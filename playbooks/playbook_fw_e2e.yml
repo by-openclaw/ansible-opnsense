@@ -210,9 +210,69 @@
           - check_alias.action == 'deleted'
 
     # ----------------------------------------------------------------
-    # Phase 6: Cleanup — delete all test objects (reverse order)
+    # Phase 6: Error handling — verify typed exceptions reach Ansible
     # ----------------------------------------------------------------
-    - name: "6.1 Delete source NAT rule"
+    - name: "6.1 Error: bad credentials → auth failure"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "bad_key_for_test"
+        secret: "bad_secret_for_test"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "should_not_exist"
+        state: present
+      register: auth_error
+      ignore_errors: true
+
+    - name: "6.2 Verify auth error caught"
+      ansible.builtin.assert:
+        that:
+          - auth_error.failed
+          - "'Authentication failed' in auth_error.msg or '401' in (auth_error.msg | default(''))"
+        fail_msg: "Auth error not properly reported: {{ auth_error.msg | default('no msg') }}"
+
+    - name: "6.3 Error: empty alias name → validation failure"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: ""
+        type: host
+        state: present
+      register: validation_error
+      ignore_errors: true
+
+    - name: "6.4 Verify validation error caught"
+      ansible.builtin.assert:
+        that:
+          - validation_error.failed
+        fail_msg: "Validation error not properly reported"
+
+    - name: "6.5 Error: unreachable host → connection failure"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "10.99.99.99"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: 443
+        verify_ssl: false
+        description: "should_not_exist"
+        state: present
+      register: conn_error
+      ignore_errors: true
+
+    - name: "6.6 Verify connection error caught"
+      ansible.builtin.assert:
+        that:
+          - conn_error.failed
+          - "'timed out' in conn_error.msg or 'Connection failed' in conn_error.msg"
+        fail_msg: "Connection error not properly reported: {{ conn_error.msg | default('no msg') }}"
+
+    # ----------------------------------------------------------------
+    # Phase 7: Cleanup — delete all test objects (reverse order)
+    # ----------------------------------------------------------------
+    - name: "7.1 Delete source NAT rule"
       by_systems.opnsense.opnsense_fw_source_nat:
         host: "{{ opn_host }}"
         key: "{{ opn_key }}"
@@ -223,7 +283,7 @@
         state: absent
       register: snat_del
 
-    - name: "6.2 Delete D-NAT rule"
+    - name: "7.2 Delete D-NAT rule"
       by_systems.opnsense.opnsense_fw_dnat:
         host: "{{ opn_host }}"
         key: "{{ opn_key }}"
@@ -235,7 +295,7 @@
         state: absent
       register: dnat_del
 
-    - name: "6.3 Delete filter rule"
+    - name: "7.3 Delete filter rule"
       by_systems.opnsense.opnsense_fw_filter:
         host: "{{ opn_host }}"
         key: "{{ opn_key }}"
@@ -246,7 +306,7 @@
         state: absent
       register: filter_del
 
-    - name: "6.4 Delete alias"
+    - name: "7.4 Delete alias"
       by_systems.opnsense.opnsense_fw_alias:
         host: "{{ opn_host }}"
         key: "{{ opn_key }}"
@@ -257,7 +317,7 @@
         state: absent
       register: alias_del
 
-    - name: "6.5 Verify all test objects deleted"
+    - name: "7.5 Verify all test objects deleted"
       ansible.builtin.assert:
         that:
           - snat_del.changed
