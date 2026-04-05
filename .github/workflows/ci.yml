@@ -24,10 +24,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
+        env:
+          GIT_AUTH: "x-access-token:${{ secrets.RUNE_GITHUB_TOKEN }}"
         run: |
           python -m pip install --upgrade pip
           pip install ansible-core ansible-lint
-          pip install git+https://github.com/by-openclaw/lib-opnsense.git
+          pip install "git+https://${GIT_AUTH}@github.com/by-openclaw/lib-opnsense.git"
 
       - name: Lint with ansible-lint
         run: ansible-lint plugins/
