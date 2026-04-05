@@ -1,0 +1,53 @@
+---
+# Role defaults — override in playbook vars, group_vars, or host_vars.
+
+# Connection — ALL must be provided via inventory, group_vars, or extra-vars.
+# No hardcoded defaults for host, port, key, secret, or verify_ssl.
+# opn_host:
+# opn_port:
+# opn_key:
+# opn_secret:
+# opn_verify_ssl:
+
+# Aliases to ensure (list of dicts)
+# Example:
+#   opn_aliases:
+#     - name: net_dmz
+#       type: network
+#       content: "10.6.225.0/24"
+#       description: "DMZ subnet"
+#       state: present
+opn_aliases: []
+
+# Filter rules to ensure (list of dicts)
+# Example:
+#   opn_filter_rules:
+#     - description: "Allow HTTPS outbound"
+#       action: pass
+#       interface: lan
+#       protocol: TCP
+#       destination_port: "443"
+#       state: present
+opn_filter_rules: []
+
+# D-NAT / port forward rules to ensure (list of dicts)
+# Requires OPNsense >= 26.1
+# Example:
+#   opn_dnat_rules:
+#     - descr: "Forward HTTPS to web-01"
+#       interface: wan
+#       protocol: tcp
+#       target: "10.6.225.10"
+#       local_port: "443"
+#       state: present
+opn_dnat_rules: []
+
+# Source NAT rules to ensure (list of dicts)
+# Example:
+#   opn_snat_rules:
+#     - description: "Masquerade DMZ to WAN"
+#       interface: wan
+#       source_net: "10.6.225.0/24"
+#       target: wanip
+#       state: present
+opn_snat_rules: []

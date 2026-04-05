@@ -1,0 +1,92 @@
+---
+# Role: firewall — manage OPNsense aliases, filter rules, D-NAT, source NAT.
+#
+# Variables (from defaults/main.yml):
+#   opn_aliases:      list of alias dicts
+#   opn_filter_rules: list of filter rule dicts
+#   opn_dnat_rules:   list of D-NAT rule dicts
+#   opn_snat_rules:   list of source NAT rule dicts
+#
+# Order: aliases first (referenced by rules), then filter, D-NAT, source NAT.
+
+- name: Ensure OPNsense firewall aliases
+  by_systems.opnsense.opnsense_fw_alias:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    name: "{{ item.name }}"
+    type: "{{ item.type | default('host') }}"
+    content: "{{ item.content | default('') }}"
+    description: "{{ item.description | default('') }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_aliases }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure OPNsense filter rules
+  by_systems.opnsense.opnsense_fw_filter:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    action: "{{ item.action | default('pass') }}"
+    interface: "{{ item.interface | default('lan') }}"
+    direction: "{{ item.direction | default('in') }}"
+    ipprotocol: "{{ item.ipprotocol | default('inet') }}"
+    protocol: "{{ item.protocol | default('any') }}"
+    source_net: "{{ item.source_net | default('any') }}"
+    source_port: "{{ item.source_port | default('') }}"
+    destination_net: "{{ item.destination_net | default('any') }}"
+    destination_port: "{{ item.destination_port | default('') }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    log: "{{ item.log | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_filter_rules }}"
+  loop_control:
+    label: "{{ item.description }}"
+
+- name: Ensure OPNsense D-NAT rules
+  by_systems.opnsense.opnsense_fw_dnat:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    descr: "{{ item.descr }}"
+    interface: "{{ item.interface | default('wan') }}"
+    ipprotocol: "{{ item.ipprotocol | default('inet') }}"
+    protocol: "{{ item.protocol | default('tcp') }}"
+    target: "{{ item.target }}"
+    local_port: "{{ item.local_port | default('') }}"
+    disabled: "{{ item.disabled | default(false) }}"
+    log: "{{ item.log | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_dnat_rules }}"
+  loop_control:
+    label: "{{ item.descr }}"
+
+- name: Ensure OPNsense source NAT rules
+  by_systems.opnsense.opnsense_fw_source_nat:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    interface: "{{ item.interface | default('wan') }}"
+    ipprotocol: "{{ item.ipprotocol | default('inet') }}"
+    protocol: "{{ item.protocol | default('any') }}"
+    source_net: "{{ item.source_net | default('any') }}"
+    destination_net: "{{ item.destination_net | default('any') }}"
+    target: "{{ item.target | default('wanip') }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    log: "{{ item.log | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_snat_rules }}"
+  loop_control:
+    label: "{{ item.description }}"

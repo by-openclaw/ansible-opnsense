@@ -1,0 +1,3 @@
+---
+# Internal role variables — not intended to be overridden.
+# All user-facing variables are in defaults/main.yml.
