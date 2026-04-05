@@ -1,0 +1,37 @@
+---
+# Role defaults — override in playbook vars, group_vars, or host_vars.
+
+# Connection — ALL must be provided via inventory, group_vars, or extra-vars.
+# No hardcoded defaults for host, port, key, secret, or verify_ssl.
+# opn_host:
+# opn_port:
+# opn_key:
+# opn_secret:
+# opn_verify_ssl:
+
+# Users to ensure (list of dicts)
+# Example:
+#   opn_users:
+#     - name: svc-monitoring
+#       email: monitoring@example.com
+#       state: present
+#     - name: svc-old
+#       state: absent
+opn_users: []
+
+# Groups to ensure (list of dicts)
+# Example:
+#   opn_groups:
+#     - name: grp-automation
+#       description: "Automation accounts"
+#       state: present
+opn_groups: []
+
+# Privileges to assign (list of dicts)
+# Example:
+#   opn_privileges:
+#     - priv_id: page-diagnostics-arptable
+#       target_type: group
+#       target_name: grp-automation
+#       state: present
+opn_privileges: []

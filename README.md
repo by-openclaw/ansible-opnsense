@@ -1,14 +1,14 @@
 # BY-SYSTEMS OPNsense Ansible Collection
 
-Thin Ansible modules wrapping [lib-opnsense](https://github.com/by-openclaw/lib-opnsense) -- the async Python library for the OPNsense REST API.
-
-All API logic, retry handling, and idempotency live in lib-opnsense. These modules are intentionally minimal: they translate Ansible parameters into `ensure()` calls and return structured results.
+> **`by_systems.opnsense`** — Ansible collection for OPNsense firewall automation.
+> Thin wrapper modules around [lib-opnsense](https://github.com/by-openclaw/lib-opnsense).
+> Requires OPNsense **>= 26.1**.
 
 ## Requirements
 
 - Python 3.10+
 - Ansible 2.15+
-- lib-opnsense (`pip install opnsense` or from source)
+- lib-opnsense >= 0.1.0 (`pip install opnsense`)
 
 ## Installation
 
@@ -25,56 +25,107 @@ ansible-galaxy collection build
 ansible-galaxy collection install by_systems-opnsense-0.1.0.tar.gz
 ```
 
+## Collection Structure
+
+```
+ansible-opnsense/
+├── galaxy.yml                          # Collection metadata (namespace: by_systems)
+├── plugins/
+│   ├── modules/
+│   │   ├── opnsense_auth_user.py       # CRUD local users
+│   │   ├── opnsense_auth_group.py      # CRUD local groups
+│   │   ├── opnsense_auth_priv.py       # Privilege assignment
+│   │   └── opnsense_auth_api_key.py    # API key management
+│   ├── module_utils/
+│   │   └── opnsense_helper.py          # Shared try/except/finally + error mapping
+│   ├── filter/                         # Future Jinja2 filters
+│   └── inventory/                      # Future inventory plugins
+├── roles/
+│   └── auth/
+│       ├── tasks/main.yml              # Groups → Users → Privileges (ordered)
+│       ├── defaults/main.yml           # Role variables (no hardcoded values)
+│       ├── vars/main.yml               # Internal constants
+│       ├── handlers/main.yml           # Auth is immediate (placeholder)
+│       └── meta/main.yml               # Galaxy role metadata
+├── inventories/
+│   └── opnsense/
+│       ├── hosts.yml                   # One host per firewall (connection=local)
+│       ├── group_vars/
+│       │   └── all.yml                 # Connection defaults (creds via vault)
+│       └── host_vars/                  # Per-host overrides
+├── playbooks/
+│   ├── playbook_auth.yml               # Role-based auth management
+│   └── playbook_auth_e2e.yml           # Full lifecycle test (32 tasks)
+├── docs/
+│   ├── index.md                        # Documentation TOC
+│   ├── modules.md                      # Module parameters reference
+│   ├── roles.md                        # Role usage + variables
+│   ├── inventory.md                    # Inventory + credential setup
+│   └── error-handling.md               # Exception → fail_json mapping
+└── tests/
+    ├── integration/                    # E2E tests against live device
+    └── unit/                           # Module unit tests
+```
+
 ## Modules
 
-| Module | Description |
-|---|---|
-| `by_systems.opnsense.opnsense_auth_user` | Manage OPNsense local users (create/update/delete) |
-| `by_systems.opnsense.opnsense_auth_group` | Manage OPNsense local groups (create/update/delete) |
+| Module | Description | Since |
+|---|---|---|
+| `opnsense_auth_user` | CRUD local users (email, password, group membership) | 25.1 |
+| `opnsense_auth_group` | CRUD local groups | 25.1 |
+| `opnsense_auth_priv` | Assign/unassign privileges to users or groups | 25.1 (UUID-based on 26.1) |
+| `opnsense_auth_api_key` | Create/delete API keys for users | 26.1 |
 
 All modules support `check_mode` and return `changed`, `action`, `uuid`, and `diff`.
 
-## Usage
+## Roles
 
-### Environment variables
+| Role | Description |
+|---|---|
+| `auth` | Manage users, groups, and privileges in correct order |
 
-Set OPNsense credentials as environment variables:
+## Quick Start
 
-```bash
-export OPN_HOST=opnsense.example.com
-export OPN_KEY=your-api-key
-export OPN_SECRET=your-api-secret
-```
-
-### Playbook example
+### Using the role (recommended)
 
 ```yaml
-- name: OPNsense auth management
-  hosts: localhost
+- hosts: all
   connection: local
-  gather_facts: false
   vars:
-    opn_host: "{{ lookup('env', 'OPN_HOST') }}"
-    opn_key: "{{ lookup('env', 'OPN_KEY') }}"
-    opn_secret: "{{ lookup('env', 'OPN_SECRET') }}"
-  tasks:
-    - name: Ensure automation group exists
-      by_systems.opnsense.opnsense_auth_group:
-        host: "{{ opn_host }}"
-        key: "{{ opn_key }}"
-        secret: "{{ opn_secret }}"
-        name: grp-automation
-        description: "Automation service accounts"
-        state: present
+    opn_host: "10.6.224.106"
+    opn_key: "{{ vault_opn_key }}"
+    opn_secret: "{{ vault_opn_secret }}"
+    opn_port: 443
+    opn_verify_ssl: false
 
-    - name: Ensure service account exists
-      by_systems.opnsense.opnsense_auth_user:
-        host: "{{ opn_host }}"
-        key: "{{ opn_key }}"
-        secret: "{{ opn_secret }}"
-        name: svc-automation
-        email: automation@example.com
-        state: present
+    opn_groups:
+      - name: grp-automation
+        description: "Automation accounts"
+
+    opn_users:
+      - name: svc-ansible
+        email: ansible@example.com
+
+    opn_privileges:
+      - priv_id: page-all
+        target_type: group
+        target_name: grp-automation
+
+  roles:
+    - auth
+```
+
+### Using modules directly
+
+```yaml
+- name: Ensure user exists
+  by_systems.opnsense.opnsense_auth_user:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    name: svc-automation
+    email: automation@example.com
+    state: present
 ```
 
 ### Dry run
@@ -83,6 +134,41 @@ export OPN_SECRET=your-api-secret
 ansible-playbook playbooks/playbook_auth.yml --check
 ```
 
+### Verbose with logging
+
+```bash
+ansible-playbook playbooks/playbook_auth_e2e.yml -vv \
+  -e opn_host=10.6.224.106 \
+  -e opn_key=<key> \
+  -e opn_secret=<secret>
+
+# Logs written to: ~/.opnsense/logs/ansible-opnsense.log (Loki JSON)
+```
+
+## Error Handling
+
+All modules use `try/except/finally` (ADR-0029):
+- Typed exceptions mapped to `fail_json()` with clear messages
+- `finally` block guarantees `client.close()` — no connection leaks
+- Log file: `~/.opnsense/logs/ansible-opnsense.log` (structured JSON for Loki)
+
+| Error | Ansible Output |
+|---|---|
+| Invalid credentials | `"Authentication failed... Check API key and secret."` |
+| Validation error | `"Validation failed..."` + field-level details |
+| Timeout | `"Request timed out..."` |
+| Wrong OPNsense version | `"Endpoint not found... Check OPNsense version >= 26.1."` |
+
+## Credential Options
+
+| Method | Best for |
+|---|---|
+| Ansible Vault | Production — encrypted at rest |
+| Extra-vars (`-e`) | Ad-hoc runs, CI/CD |
+| Environment variables | Scripts, containers |
+
+See [docs/inventory.md](docs/inventory.md) for details.
+
 ## Development
 
 ```bash
@@ -90,15 +176,30 @@ git clone https://github.com/by-openclaw/ansible-opnsense.git
 cd ansible-opnsense
 
 # Install lib-opnsense from source
-pip install git+https://github.com/by-openclaw/lib-opnsense.git
+pip install -e ../lib-opnsense
+
+# Symlink collection for local development
+mkdir -p ~/.ansible/collections/ansible_collections/by_systems
+ln -s $(pwd) ~/.ansible/collections/ansible_collections/by_systems/opnsense
 
 # Lint
 pip install ansible-lint
 ansible-lint plugins/
 
-# Run integration playbook (requires live OPNsense)
-ansible-playbook playbooks/playbook_auth.yml
+# Run E2E test (requires live OPNsense >= 26.1)
+ansible-playbook playbooks/playbook_auth_e2e.yml -vv \
+  -e opn_host=<host> -e opn_key=<key> -e opn_secret=<secret>
 ```
+
+## Cross-references
+
+| Resource | Location |
+|---|---|
+| lib-opnsense (Python library) | [by-openclaw/lib-opnsense](https://github.com/by-openclaw/lib-opnsense) |
+| API Schema Audit | `platform-setup/tools/opnsense/docs/api-schema-audit.md` |
+| API Version Compatibility | `platform-setup/tools/opnsense/docs/api-version-compatibility.md` |
+| ADR-0029 (Python lib standard) | `doc-platform-core/docs/adr/0029-python-library-design-standard.md` |
+| ADR-0030 (Naming convention) | `doc-platform-core/docs/adr/0030-automation-naming-convention.md` |
 
 ## License
 

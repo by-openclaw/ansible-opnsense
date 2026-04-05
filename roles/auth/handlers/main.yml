@@ -1,0 +1,4 @@
+---
+# Auth changes on OPNsense are immediate — no reconfigure/restart needed.
+# This file is kept for role compliance. Future roles (firewall, dns)
+# will have handlers for service reconfigure.
