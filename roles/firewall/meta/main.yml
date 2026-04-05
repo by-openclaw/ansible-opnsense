@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: firewall
+  author: BY-SYSTEMS (@by-openclaw)
+  description: Manage OPNsense firewall aliases, filter rules, D-NAT, and source NAT
+  company: BY-SYSTEMS SRL
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Generic
+      versions:
+        - all
+  galaxy_tags:
+    - opnsense
+    - firewall
+    - network
+    - automation
+dependencies: []

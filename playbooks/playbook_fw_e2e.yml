@@ -1,0 +1,268 @@
+---
+# E2E test playbook — firewall aliases, filter rules, D-NAT, source NAT.
+#
+# Creates test objects, verifies idempotency, then cleans up.
+# All test objects use inttest- prefix.
+#
+# Usage:
+#   ansible-playbook playbooks/playbook_fw_e2e.yml -e @vars.yml -v
+#
+# Required vars (vars.yml or extra-vars):
+#   opn_host, opn_port, opn_key, opn_secret, opn_verify_ssl
+
+- name: "OPNsense Firewall E2E Test"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    test_alias_name: "inttest_fw_alias"
+    test_filter_desc: "inttest-fw-filter-allow-https"
+    test_dnat_desc: "inttest-fw-dnat-forward-http"
+    test_snat_desc: "inttest-fw-snat-masquerade"
+
+  tasks:
+    # ----------------------------------------------------------------
+    # Phase 1: Create aliases
+    # ----------------------------------------------------------------
+    - name: "1.1 Create host alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ test_alias_name }}"
+        type: host
+        content: "10.6.225.99"
+        description: "E2E test alias"
+        state: present
+      register: alias_create
+
+    - name: "1.2 Verify alias created"
+      ansible.builtin.assert:
+        that:
+          - alias_create.changed
+          - alias_create.action in ['created', 'updated']
+        fail_msg: "Alias create failed"
+
+    - name: "1.3 Alias idempotency check"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ test_alias_name }}"
+        type: host
+        content: "10.6.225.99"
+        description: "E2E test alias"
+        state: present
+      register: alias_noop
+
+    - name: "1.4 Verify alias noop"
+      ansible.builtin.assert:
+        that:
+          - not alias_noop.changed
+          - alias_noop.action == 'noop'
+
+    # ----------------------------------------------------------------
+    # Phase 2: Create filter rules
+    # ----------------------------------------------------------------
+    - name: "2.1 Create filter rule"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ test_filter_desc }}"
+        action: pass
+        interface: lan
+        direction: in
+        protocol: TCP
+        destination_port: "443"
+        state: present
+      register: filter_create
+
+    - name: "2.2 Verify filter rule created"
+      ansible.builtin.assert:
+        that:
+          - filter_create.changed
+          - filter_create.action in ['created', 'updated']
+
+    - name: "2.3 Filter idempotency check"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ test_filter_desc }}"
+        action: pass
+        interface: lan
+        direction: in
+        protocol: TCP
+        destination_port: "443"
+        state: present
+      register: filter_noop
+
+    - name: "2.4 Verify filter noop"
+      ansible.builtin.assert:
+        that:
+          - not filter_noop.changed
+
+    # ----------------------------------------------------------------
+    # Phase 3: Create D-NAT rule (requires 26.1+)
+    # ----------------------------------------------------------------
+    - name: "3.1 Create D-NAT rule"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ test_dnat_desc }}"
+        interface: wan
+        protocol: tcp
+        target: "10.6.225.99"
+        local_port: "80"
+        state: present
+      register: dnat_create
+
+    - name: "3.2 Verify D-NAT created"
+      ansible.builtin.assert:
+        that:
+          - dnat_create.changed
+          - dnat_create.action in ['created', 'updated']
+
+    - name: "3.3 D-NAT idempotency check"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ test_dnat_desc }}"
+        interface: wan
+        protocol: tcp
+        target: "10.6.225.99"
+        local_port: "80"
+        state: present
+      register: dnat_noop
+
+    - name: "3.4 Verify D-NAT noop"
+      ansible.builtin.assert:
+        that:
+          - not dnat_noop.changed
+
+    # ----------------------------------------------------------------
+    # Phase 4: Create source NAT rule
+    # ----------------------------------------------------------------
+    - name: "4.1 Create source NAT rule"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ test_snat_desc }}"
+        interface: wan
+        source_net: "10.6.225.0/24"
+        target: wanip
+        state: present
+      register: snat_create
+
+    - name: "4.2 Verify source NAT created"
+      ansible.builtin.assert:
+        that:
+          - snat_create.changed
+          - snat_create.action in ['created', 'updated']
+
+    # ----------------------------------------------------------------
+    # Phase 5: Check mode (dry run)
+    # ----------------------------------------------------------------
+    - name: "5.1 Check mode — alias delete"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ test_alias_name }}"
+        state: absent
+      check_mode: true
+      register: check_alias
+
+    - name: "5.2 Verify check mode reports changed but no actual delete"
+      ansible.builtin.assert:
+        that:
+          - check_alias.changed
+          - check_alias.action == 'deleted'
+
+    # ----------------------------------------------------------------
+    # Phase 6: Cleanup — delete all test objects
+    # ----------------------------------------------------------------
+    - name: "6.1 Delete source NAT rule"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ test_snat_desc }}"
+        state: absent
+      register: snat_del
+
+    - name: "6.2 Delete D-NAT rule"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ test_dnat_desc }}"
+        target: "10.6.225.99"
+        state: absent
+      register: dnat_del
+
+    - name: "6.3 Delete filter rule"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ test_filter_desc }}"
+        state: absent
+      register: filter_del
+
+    - name: "6.4 Delete alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ test_alias_name }}"
+        state: absent
+      register: alias_del
+
+    - name: "6.5 Verify all test objects deleted"
+      ansible.builtin.assert:
+        that:
+          - snat_del.changed
+          - dnat_del.changed
+          - filter_del.changed
+          - alias_del.changed
+        fail_msg: "Cleanup incomplete — check OPNsense for leftover inttest- objects"
+
+    - name: "E2E PASS — all firewall tests completed"
+      ansible.builtin.debug:
+        msg: >-
+          Firewall E2E test complete:
+          alias={{ alias_create.action }},
+          filter={{ filter_create.action }},
+          dnat={{ dnat_create.action }},
+          snat={{ snat_create.action }},
+          idempotency verified, cleanup done.
