@@ -9,8 +9,7 @@ license:
   - MIT
 license_file: LICENSE
 repository: https://github.com/by-openclaw/ansible-opnsense
-dependencies:
-  ansible.builtin: ">=2.15"
+dependencies: {}
 build_ignore:
   - .git
   - .github
