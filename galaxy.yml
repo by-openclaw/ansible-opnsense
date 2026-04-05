@@ -1,0 +1,22 @@
+namespace: by_systems
+name: opnsense
+version: 0.1.0
+readme: README.md
+authors:
+  - BY-SYSTEMS <engineering@by-systems.be>
+description: Ansible collection for OPNsense firewall management via lib-opnsense
+license:
+  - MIT
+license_file: LICENSE
+repository: https://github.com/by-openclaw/ansible-opnsense
+dependencies:
+  ansible.builtin: ">=2.15"
+build_ignore:
+  - .git
+  - .github
+  - .devcontainer
+  - .venv
+  - tests
+  - playbooks
+  - "*.pyc"
+  - __pycache__
