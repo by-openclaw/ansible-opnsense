@@ -54,12 +54,15 @@ These are architectural decisions. They are NOT suggestions. Do not override the
 
 | Component | Status |
 |---|---|
-| opnsense_auth_user module | Scaffold |
-| opnsense_auth_group module | Scaffold |
+| opnsense_auth_user module | Done (try/except/finally, 26.1 compatible) |
+| opnsense_auth_group module | Done (try/except/finally, 26.1 compatible) |
+| opnsense_auth_priv module | Done (privilege assign/unassign) |
+| opnsense_auth_api_key module | Done (create/delete API keys) |
+| module_utils/opnsense_helper | Done (shared error handling + client lifecycle) |
+| E2E test playbook | Done (playbooks/playbook_auth_e2e.yml) |
 | galaxy.yml collection metadata | Done |
-| CI: ansible-lint | Pending |
-| ansible-test sanity | Pending |
-| Integration tests (live device) | Pending |
+| CI: ansible-lint + sanity | Done |
+| Integration tests (live device) | Done (E2E playbook) |
 | Dev container (.devcontainer/) | Pending |
 
 ---

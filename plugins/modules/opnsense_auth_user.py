@@ -1,11 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 # Copyright (c) 2026 BY-SYSTEMS SRL. MIT License.
 # SPDX-License-Identifier: MIT
 # Repo: https://github.com/by-openclaw/ansible-opnsense
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# Copyright: (c) 2026, BY-SYSTEMS SRL
-# MIT License (see LICENSE)
 
 """Ansible module for OPNsense local user management via lib-opnsense."""
 
@@ -19,7 +16,7 @@ version_added: "0.1.0"
 description:
   - Create, update, or delete local users on an OPNsense firewall.
   - Thin wrapper around lib-opnsense AuthUserManager.ensure().
-  - All API logic lives in the lib-opnsense Python library.
+  - Requires OPNsense >= 26.1.
 options:
   host:
     description: OPNsense hostname or IP address.
@@ -52,13 +49,19 @@ options:
     type: str
     default: ""
   description:
-    description: User description.
+    description: User description / comment.
     type: str
     default: ""
   password:
     description: User password. Only used on create or explicit update.
     type: str
     no_log: true
+  group_memberships:
+    description: >
+      Comma-separated list of group GIDs to assign the user to.
+      OPNsense 26.1 uses numeric GIDs for group membership.
+    type: str
+    default: ""
   disabled:
     description: Whether the user account is disabled.
     type: bool
@@ -71,7 +74,7 @@ options:
 author:
   - BY-SYSTEMS (@by-openclaw)
 requirements:
-  - opnsense (lib-opnsense Python library)
+  - opnsense (lib-opnsense >= 0.1.0)
 """
 
 EXAMPLES = r"""
@@ -85,15 +88,7 @@ EXAMPLES = r"""
     description: "CI service account"
     state: present
 
-- name: Remove a user
-  by_systems.opnsense.opnsense_auth_user:
-    host: "{{ opn_host }}"
-    key: "{{ opn_key }}"
-    secret: "{{ opn_secret }}"
-    name: svc-old-account
-    state: absent
-
-- name: Create user with password (check mode)
+- name: Create user in specific group
   by_systems.opnsense.opnsense_auth_user:
     host: "{{ opn_host }}"
     key: "{{ opn_key }}"
@@ -101,8 +96,16 @@ EXAMPLES = r"""
     name: admin-user
     email: admin@example.com
     password: "{{ vault_admin_password }}"
+    group_memberships: "2000,2001"
     state: present
-  check_mode: true
+
+- name: Remove a user
+  by_systems.opnsense.opnsense_auth_user:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    name: svc-old-account
+    state: absent
 """
 
 RETURN = r"""
@@ -124,92 +127,53 @@ diff:
   returned: when changed
 """
 
-import asyncio
-
 from ansible.module_utils.basic import AnsibleModule
 
-
-async def _run_ensure(module: AnsibleModule) -> dict:
-    """Execute the ensure() call against OPNsense."""
-    from opnsense.client import OpnsenseClient
-    from opnsense.managers.auth_user import AuthUserManager
-
-    params: dict = {}
-    params["name"] = module.params["name"]
-    if module.params["email"]:
-        params["email"] = module.params["email"]
-    if module.params["description"]:
-        params["description"] = module.params["description"]
-    if module.params["password"] is not None:
-        params["password"] = module.params["password"]
-    if module.params["disabled"]:
-        params["disabled"] = "1"
-
-    async with OpnsenseClient(
-        host=module.params["host"],
-        key=module.params["key"],
-        secret=module.params["secret"],
-        port=module.params["port"],
-        verify_ssl=module.params["verify_ssl"],
-    ) as client:
-        mgr = AuthUserManager(client)
-        result = await mgr.ensure(
-            state=module.params["state"],
-            params=params,
-            check_mode=module.check_mode,
-        )
-
-    diff = {}
-    if result.before is not None:
-        diff["before"] = result.before
-    if result.after is not None:
-        diff["after"] = result.after
-
-    return {
-        "changed": result.changed,
-        "action": result.action,
-        "uuid": result.uuid or "",
-        "diff": diff,
-    }
+try:
+    from ansible_collections.by_systems.opnsense.plugins.module_utils.opnsense_helper import (
+        opn_argument_spec,
+        run_module,
+    )
+except ImportError:
+    from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
 def main() -> None:
     """Entry point for the Ansible module."""
-    module = AnsibleModule(
-        argument_spec={
-            "host": {"type": "str", "required": True},
-            "key": {"type": "str", "required": True, "no_log": True},
-            "secret": {"type": "str", "required": True, "no_log": True},
-            "port": {"type": "int", "default": 443},
-            "verify_ssl": {"type": "bool", "default": False},
+    spec = opn_argument_spec()
+    spec.update(
+        {
             "name": {"type": "str", "required": True},
             "email": {"type": "str", "default": ""},
             "description": {"type": "str", "default": ""},
             "password": {"type": "str", "no_log": True, "default": None},
+            "group_memberships": {"type": "str", "default": ""},
             "disabled": {"type": "bool", "default": False},
             "state": {
                 "type": "str",
                 "choices": ["present", "absent"],
                 "default": "present",
             },
-        },
-        supports_check_mode=True,
+        }
     )
 
-    try:
-        result = asyncio.run(_run_ensure(module))
-    except ImportError as exc:
-        module.fail_json(
-            msg=(
-                "lib-opnsense is required but not installed. "
-                "Install with: pip install opnsense"
-            ),
-            exception=str(exc),
-        )
-    except Exception as exc:
-        module.fail_json(msg=str(exc), exception=str(exc))
+    module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
-    module.exit_json(**result)
+    params: dict = {"name": module.params["name"]}
+    if module.params["email"]:
+        params["email"] = module.params["email"]
+    if module.params["description"]:
+        params["description"] = module.params["description"]
+    if module.params["password"] is not None:
+        params["password"] = module.params["password"]
+    if module.params["group_memberships"]:
+        params["group_memberships"] = module.params["group_memberships"]
+    if module.params["disabled"]:
+        params["disabled"] = "1"
+
+    from opnsense.managers.auth_user import AuthUserManager
+
+    run_module(module, AuthUserManager, params)
 
 
 if __name__ == "__main__":

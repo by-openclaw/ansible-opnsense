@@ -1,0 +1,6 @@
+---
+# Role vars — internal constants, not meant to be overridden.
+# Override defaults/main.yml instead.
+
+_auth_role_version: "0.1.0"
+_auth_min_opnsense_version: "26.1"

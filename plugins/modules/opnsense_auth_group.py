@@ -1,11 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 # Copyright (c) 2026 BY-SYSTEMS SRL. MIT License.
 # SPDX-License-Identifier: MIT
 # Repo: https://github.com/by-openclaw/ansible-opnsense
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-# Copyright: (c) 2026, BY-SYSTEMS SRL
-# MIT License (see LICENSE)
 
 """Ansible module for OPNsense local group management via lib-opnsense."""
 
@@ -19,7 +16,7 @@ version_added: "0.1.0"
 description:
   - Create, update, or delete local groups on an OPNsense firewall.
   - Thin wrapper around lib-opnsense AuthGroupManager.ensure().
-  - All API logic lives in the lib-opnsense Python library.
+  - Requires OPNsense >= 26.1.
 options:
   host:
     description: OPNsense hostname or IP address.
@@ -59,7 +56,7 @@ options:
 author:
   - BY-SYSTEMS (@by-openclaw)
 requirements:
-  - opnsense (lib-opnsense Python library)
+  - opnsense (lib-opnsense >= 0.1.0)
 """
 
 EXAMPLES = r"""
@@ -100,58 +97,22 @@ diff:
   returned: when changed
 """
 
-import asyncio
-
 from ansible.module_utils.basic import AnsibleModule
 
-
-async def _run_ensure(module: AnsibleModule) -> dict:
-    """Execute the ensure() call against OPNsense."""
-    from opnsense.client import OpnsenseClient
-    from opnsense.managers.auth_group import AuthGroupManager
-
-    params: dict = {}
-    params["name"] = module.params["name"]
-    if module.params["description"]:
-        params["description"] = module.params["description"]
-
-    async with OpnsenseClient(
-        host=module.params["host"],
-        key=module.params["key"],
-        secret=module.params["secret"],
-        port=module.params["port"],
-        verify_ssl=module.params["verify_ssl"],
-    ) as client:
-        mgr = AuthGroupManager(client)
-        result = await mgr.ensure(
-            state=module.params["state"],
-            params=params,
-            check_mode=module.check_mode,
-        )
-
-    diff = {}
-    if result.before is not None:
-        diff["before"] = result.before
-    if result.after is not None:
-        diff["after"] = result.after
-
-    return {
-        "changed": result.changed,
-        "action": result.action,
-        "uuid": result.uuid or "",
-        "diff": diff,
-    }
+try:
+    from ansible_collections.by_systems.opnsense.plugins.module_utils.opnsense_helper import (
+        opn_argument_spec,
+        run_module,
+    )
+except ImportError:
+    from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
 def main() -> None:
     """Entry point for the Ansible module."""
-    module = AnsibleModule(
-        argument_spec={
-            "host": {"type": "str", "required": True},
-            "key": {"type": "str", "required": True, "no_log": True},
-            "secret": {"type": "str", "required": True, "no_log": True},
-            "port": {"type": "int", "default": 443},
-            "verify_ssl": {"type": "bool", "default": False},
+    spec = opn_argument_spec()
+    spec.update(
+        {
             "name": {"type": "str", "required": True},
             "description": {"type": "str", "default": ""},
             "state": {
@@ -159,24 +120,18 @@ def main() -> None:
                 "choices": ["present", "absent"],
                 "default": "present",
             },
-        },
-        supports_check_mode=True,
+        }
     )
 
-    try:
-        result = asyncio.run(_run_ensure(module))
-    except ImportError as exc:
-        module.fail_json(
-            msg=(
-                "lib-opnsense is required but not installed. "
-                "Install with: pip install opnsense"
-            ),
-            exception=str(exc),
-        )
-    except Exception as exc:
-        module.fail_json(msg=str(exc), exception=str(exc))
+    module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
-    module.exit_json(**result)
+    params: dict = {"name": module.params["name"]}
+    if module.params["description"]:
+        params["description"] = module.params["description"]
+
+    from opnsense.managers.auth_group import AuthGroupManager
+
+    run_module(module, AuthGroupManager, params)
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ jobs:
         run: |
           python -c "
           import importlib, sys
-          for mod in ['plugins.modules.opnsense_auth_user', 'plugins.modules.opnsense_auth_group']:
+          for mod in ['plugins.modules.opnsense_auth_user', 'plugins.modules.opnsense_auth_group', 'plugins.modules.opnsense_auth_priv', 'plugins.modules.opnsense_auth_api_key']:
               m = importlib.import_module(mod)
               for attr in ['DOCUMENTATION', 'EXAMPLES', 'RETURN']:
                   if not getattr(m, attr, None):
