@@ -1,0 +1,185 @@
+---
+# test_errors.yml — VPN error-handling + input validation tests
+#
+# Copyright BY-SYSTEMS SRL
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/by-openclaw/ansible-opnsense
+#
+# What it tests (7 cases):
+#   1. 401 — bad credentials on wg_server
+#   2. Timeout — unreachable host 192.0.2.1 on ipsec_conn
+#   3. Validation — empty WG server name (required)
+#   4. Validation — empty WG client name (required)
+#   5. Validation — bad OpenVPN role enum "INVALID"
+#   6. Validation — empty IPsec conn description (required)
+#   7. Validation — WG server port=0 (port min=1)
+#
+# Static enums (choices in module — Ansible validates before pylib):
+#   - state: present, absent
+#   - role: server, client
+#
+# Dynamic fields (type: str — no Ansible choices, pylib or API validates):
+#   - peers, connection, certificate, ca
+#
+# Run:
+#   ansible-playbook playbooks/vpn/test_errors.yml \
+#     -e opn_host=10.6.239.114 -e opn_key=<key> -e opn_secret=<secret> -v
+
+- name: "VPN error handling + input validation"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── 1. Transport: 401 Unauthorized ──────────────────────────────────
+    - name: "1. Error — 401 bad credentials on wg_server"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "BADKEY000000000000000"
+        secret: "BADSECRET0000000000000000000000000000000"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-err-wg
+        listen_port: 51899
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "1. Assert 401 caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)authentication.*(failed|401)')
+        fail_msg: "Expected 401 auth error, got: {{ r.msg | default('no msg') }}"
+
+    # ── 2. Transport: timeout ───────────────────────────────────────────
+    - name: "2. Error — timeout on unreachable 192.0.2.1 (ipsec_conn)"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "192.0.2.1"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-err-ipsec
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "2. Assert timeout caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(timed.out|connection.failed)')
+        fail_msg: "Expected timeout, got: {{ r.msg | default('no msg') }}"
+
+    # ── 3. Validation: empty WG server name ─────────────────────────────
+    - name: "3. Error — empty WG server name (required)"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: ""
+        listen_port: 51899
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "3. Assert FieldValidationError on WG server name"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|required|name)')
+        fail_msg: "Expected validation error on empty name, got: {{ r.msg | default('no msg') }}"
+
+    # ── 4. Validation: empty WG client name ─────────────────────────────
+    - name: "4. Error — empty WG client name (required)"
+      by_systems.opnsense.opnsense_wg_client:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: ""
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "4. Assert FieldValidationError on WG client name"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|required|name)')
+        fail_msg: "Expected validation error on empty name, got: {{ r.msg | default('no msg') }}"
+
+    # ── 5. Validation: bad OpenVPN role enum ────────────────────────────
+    - name: "5. Error — bad OpenVPN role enum INVALID"
+      by_systems.opnsense.opnsense_ovpn_instance:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-err-ovpn
+        role: "INVALID"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "5. Assert validation error on bad role enum"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|role|must be)')
+        fail_msg: "Expected validation error on bad role, got: {{ r.msg | default('no msg') }}"
+
+    # ── 6. Validation: empty IPsec conn description ─────────────────────
+    - name: "6. Error — empty IPsec conn description (required)"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: ""
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "6. Assert FieldValidationError on IPsec description"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|required|description)')
+        fail_msg: "Expected validation error on empty description, got: {{ r.msg | default('no msg') }}"
+
+    # ── 7. Validation: WG server port=0 (min=1) ────────────────────────
+    - name: "7. Error — WG server port=0 (port min=1)"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-err-port
+        listen_port: 0
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "7. Assert FieldValidationError on port range"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|port|range|1-65535)')
+        fail_msg: "Expected port range validation error, got: {{ r.msg | default('no msg') }}"
+
+    # ── Result ──────────────────────────────────────────────────────────
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — VPN error handling: 401, timeout, empty WG server/client name, bad OVPN role, empty IPsec desc, bad port all caught."

@@ -126,7 +126,7 @@ except ImportError:
 async def _run(module: AnsibleModule) -> dict:
     """Execute the privilege ensure() call with try/except/finally."""
     from opnsense.client import OpnsenseClient
-    from opnsense.managers.auth_priv import AuthPrivManager
+    from opnsense.managers.auth.priv import AuthPrivManager
 
     client = None
     try:

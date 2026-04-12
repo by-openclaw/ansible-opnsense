@@ -1,6 +1,6 @@
 # AGENTS.md -- ansible-opnsense
 
-Ansible collection wrapping lib-opnsense -- thin modules for OPNsense user/group management with ensure() idempotency.
+Ansible collection wrapping lib-opnsense -- 54 thin modules across 12 scopes for full OPNsense automation with ensure() idempotency.
 
 ## Always Read First
 
@@ -64,7 +64,7 @@ Before writing, editing, or reviewing any file in this repo, read:
 
 ## Test Device
 
-**OPNsense 25.1.12** at `opnsense.example.com` (port 443).
+**OPNsense 26.1** at `opnsense.example.com` (port 443).
 
 ### `svc-rune` -- API executor
 - API key stored in `.env` (gitignored)
@@ -84,13 +84,14 @@ Owner: @yboujraf
 
 ## Project Stats
 
-> Auto-updated on every release. Last updated: 2026-04-04
+> Auto-updated on every release. Last updated: 2026-04-11
 
 | Metric | Value |
 |---|---|
-| Version | v0.1.0 |
-| Tagged releases | 0 |
-| Modules | 2 (auth_user, auth_group) |
-| Integration tests | Pending |
-| CI workflows | Pending |
-| ansible-lint | Pending |
+| Version | 0.2.0 (scope expansion) |
+| Modules | 54 |
+| Roles | 11 |
+| Playbooks | 23 |
+| Integration tests | 30 |
+| CI workflows | 3 |
+| ansible-lint | 0 failures (production profile) |

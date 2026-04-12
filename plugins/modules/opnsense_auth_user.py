@@ -171,7 +171,7 @@ def main() -> None:
     if module.params["disabled"]:
         params["disabled"] = "1"
 
-    from opnsense.managers.auth_user import AuthUserManager
+    from opnsense.managers.auth.user import AuthUserManager
 
     run_module(module, AuthUserManager, params)
 

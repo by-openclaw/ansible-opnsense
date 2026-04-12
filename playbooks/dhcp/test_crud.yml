@@ -1,0 +1,331 @@
+---
+# test_crud.yml — DHCP (Kea) module CRUD lifecycle test
+#
+# What it tests:
+#   Kea4 subnet: create, idempotent noop, cleanup
+#   Kea4 reservation: create, idempotent noop, cleanup
+#   Kea4 peer: create, idempotent noop, cleanup
+#   Kea6 subnet: create, idempotent noop, cleanup
+#   Kea6 reservation: create, idempotent noop, cleanup
+#   Cleanup order: reservations → peers → subnets
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/dhcp/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "DHCP (Kea) CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup ──────────────────────────────────────────────────
+    - name: "Pre-cleanup — remove Kea6 reservation"
+      by_systems.opnsense.opnsense_kea6_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "fd99::50"
+        duid: "00:01:00:01:aa:bb:cc:dd"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove Kea4 reservation"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.50"
+        hw_address: "00:11:22:33:44:55"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove Kea4 peer"
+      by_systems.opnsense.opnsense_kea4_peer:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-peer
+        url: "http://10.11.1.2:8000"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove Kea6 subnet"
+      by_systems.opnsense.opnsense_kea6_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "fd99::/64"
+        interface: lan
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove Kea4 subnet"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "10.99.0.0/24"
+        state: absent
+      failed_when: false
+
+    # ── Kea4 Subnet CRUD ────────────────────────────────────────────
+    - name: "Create Kea4 subnet"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "10.99.0.0/24"
+        state: present
+      register: r_k4s
+
+    - name: "Assert Kea4 subnet created"
+      ansible.builtin.assert:
+        that:
+          - r_k4s.changed
+
+    - name: "Idempotent — Kea4 subnet again"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "10.99.0.0/24"
+        state: present
+      register: r_k4s
+
+    - name: "Assert Kea4 subnet noop"
+      ansible.builtin.assert:
+        that:
+          - not r_k4s.changed
+
+    # ── Kea4 Reservation CRUD ────────────────────────────────────────
+    - name: "Create Kea4 reservation"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.50"
+        hw_address: "00:11:22:33:44:55"
+        state: present
+      register: r_k4r
+
+    - name: "Assert Kea4 reservation created"
+      ansible.builtin.assert:
+        that:
+          - r_k4r.changed
+
+    - name: "Idempotent — Kea4 reservation again"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.50"
+        hw_address: "00:11:22:33:44:55"
+        state: present
+      register: r_k4r
+
+    - name: "Assert Kea4 reservation noop"
+      ansible.builtin.assert:
+        that:
+          - not r_k4r.changed
+
+    # ── Kea4 Peer CRUD ──────────────────────────────────────────────
+    - name: "Create Kea4 peer"
+      by_systems.opnsense.opnsense_kea4_peer:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-peer
+        role: primary
+        url: "http://10.11.1.2:8000"
+        state: present
+      register: r_k4p
+
+    - name: "Assert Kea4 peer created"
+      ansible.builtin.assert:
+        that:
+          - r_k4p.changed
+
+    - name: "Idempotent — Kea4 peer again"
+      by_systems.opnsense.opnsense_kea4_peer:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-peer
+        role: primary
+        url: "http://10.11.1.2:8000"
+        state: present
+      register: r_k4p
+
+    - name: "Assert Kea4 peer noop"
+      ansible.builtin.assert:
+        that:
+          - not r_k4p.changed
+
+    # ── Kea6 Subnet CRUD ────────────────────────────────────────────
+    - name: "Create Kea6 subnet"
+      by_systems.opnsense.opnsense_kea6_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "fd99::/64"
+        interface: lan
+        state: present
+      register: r_k6s
+
+    - name: "Assert Kea6 subnet created"
+      ansible.builtin.assert:
+        that:
+          - r_k6s.changed
+
+    - name: "Idempotent — Kea6 subnet again"
+      by_systems.opnsense.opnsense_kea6_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "fd99::/64"
+        interface: lan
+        state: present
+      register: r_k6s
+
+    - name: "Assert Kea6 subnet noop"
+      ansible.builtin.assert:
+        that:
+          - not r_k6s.changed
+
+    # ── Kea6 Reservation CRUD ────────────────────────────────────────
+    - name: "Create Kea6 reservation"
+      by_systems.opnsense.opnsense_kea6_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "fd99::50"
+        duid: "00:01:00:01:aa:bb:cc:dd"
+        state: present
+      register: r_k6r
+
+    - name: "Assert Kea6 reservation created"
+      ansible.builtin.assert:
+        that:
+          - r_k6r.changed
+
+    - name: "Idempotent — Kea6 reservation again"
+      by_systems.opnsense.opnsense_kea6_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "fd99::50"
+        duid: "00:01:00:01:aa:bb:cc:dd"
+        state: present
+      register: r_k6r
+
+    - name: "Assert Kea6 reservation noop"
+      ansible.builtin.assert:
+        that:
+          - not r_k6r.changed
+
+    # ── Cleanup: reservations → peers → subnets ─────────────────────
+    - name: "Cleanup — delete Kea6 reservation"
+      by_systems.opnsense.opnsense_kea6_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "fd99::50"
+        duid: "00:01:00:01:aa:bb:cc:dd"
+        state: absent
+      register: r_k6r_del
+
+    - name: "Cleanup — delete Kea4 reservation"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.50"
+        hw_address: "00:11:22:33:44:55"
+        state: absent
+      register: r_k4r_del
+
+    - name: "Cleanup — delete Kea4 peer"
+      by_systems.opnsense.opnsense_kea4_peer:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-peer
+        url: "http://10.11.1.2:8000"
+        state: absent
+      register: r_k4p_del
+
+    - name: "Cleanup — delete Kea6 subnet"
+      by_systems.opnsense.opnsense_kea6_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "fd99::/64"
+        interface: lan
+        state: absent
+      register: r_k6s_del
+
+    - name: "Cleanup — delete Kea4 subnet"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "10.99.0.0/24"
+        state: absent
+      register: r_k4s_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_k6r_del.changed
+          - r_k4r_del.changed
+          - r_k4p_del.changed
+          - r_k6s_del.changed
+          - r_k4s_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — DHCP (Kea) CRUD lifecycle complete."

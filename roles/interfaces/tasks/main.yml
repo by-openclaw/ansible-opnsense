@@ -1,0 +1,165 @@
+---
+# Role: interfaces — manage OPNsense VLANs, VIPs, bridges, loopbacks,
+#                      neighbors, VXLANs, GIF, GRE, and LAGG interfaces.
+#
+# Variables (from defaults/main.yml):
+#   opn_vlans:      list of VLAN dicts
+#   opn_vips:       list of virtual IP dicts
+#   opn_bridges:    list of bridge dicts
+#   opn_loopbacks:  list of loopback dicts
+#   opn_neighbors:  list of NDP neighbor dicts
+#   opn_vxlans:     list of VXLAN dicts
+#   opn_gifs:       list of GIF tunnel dicts
+#   opn_gres:       list of GRE tunnel dicts
+#   opn_laggs:      list of LAGG dicts
+#
+# Order: VLANs -> VIPs -> bridges -> loopbacks -> neighbors -> VXLANs -> GIF -> GRE -> LAGG.
+# VLANs first (referenced by VIPs, bridges). Tunnels last.
+
+- name: "Ensure VLAN {{ item.tag | default('unknown') }} on {{ item.if_parent | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_vlan:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    tag: "{{ item.tag }}"
+    if_parent: "{{ item.if_parent }}"
+    pcp: "{{ item.pcp | default(0) }}"
+    proto: "{{ item.proto | default('ethertype8021q') }}"
+    descr: "{{ item.descr | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_vlans }}"
+  loop_control:
+    label: "vlan{{ item.tag }} on {{ item.if_parent | default('unknown') }}"
+  when: opn_vlans | length > 0
+
+- name: "Ensure VIP {{ item.address | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_vip:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    address: "{{ item.address }}"
+    interface: "{{ item.interface }}"
+    mode: "{{ item.mode }}"
+    network: "{{ item.network | default('') }}"
+    descr: "{{ item.descr | default('') }}"
+    password: "{{ item.password | default('') }}"
+    advbase: "{{ item.advbase | default(omit) }}"
+    advskew: "{{ item.advskew | default(omit) }}"
+    vhid: "{{ item.vhid | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_vips }}"
+  loop_control:
+    label: "{{ item.address | default('unknown') }}"
+  when: opn_vips | length > 0
+  no_log: "{{ item.password is defined and item.password != '' }}"
+
+- name: "Ensure bridge {{ item.descr | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_bridge:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    descr: "{{ item.descr }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_bridges }}"
+  loop_control:
+    label: "{{ item.descr }}"
+  when: opn_bridges | length > 0
+
+- name: "Ensure loopback {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_loopback:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_loopbacks }}"
+  loop_control:
+    label: "{{ item.description }}"
+  when: opn_loopbacks | length > 0
+
+- name: "Ensure neighbor {{ item.ipaddress | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_neighbor:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    ipaddress: "{{ item.ipaddress }}"
+    etheraddr: "{{ item.etheraddr }}"
+    descr: "{{ item.descr | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_neighbors }}"
+  loop_control:
+    label: "{{ item.ipaddress | default('unknown') }}"
+  when: opn_neighbors | length > 0
+
+- name: "Ensure VXLAN {{ item.vxlanid | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_vxlan:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    vxlanid: "{{ item.vxlanid }}"
+    vxlanlocal: "{{ item.vxlanlocal }}"
+    vxlanremote: "{{ item.vxlanremote | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_vxlans }}"
+  loop_control:
+    label: "vxlan{{ item.vxlanid | default('unknown') }}"
+  when: opn_vxlans | length > 0
+
+- name: "Ensure GIF tunnel {{ item.descr | default(item.tunnel_local_addr | default('unknown')) }}"
+  by_systems.opnsense.opnsense_if_gif:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    tunnel_local_addr: "{{ item.tunnel_local_addr }}"
+    tunnel_remote_addr: "{{ item.tunnel_remote_addr }}"
+    descr: "{{ item.descr | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_gifs }}"
+  loop_control:
+    label: "{{ item.descr | default(item.tunnel_local_addr | default('unknown')) }}"
+  when: opn_gifs | length > 0
+
+- name: "Ensure GRE tunnel {{ item.descr | default(item.tunnel_local_addr | default('unknown')) }}"
+  by_systems.opnsense.opnsense_if_gre:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    tunnel_local_addr: "{{ item.tunnel_local_addr }}"
+    tunnel_remote_addr: "{{ item.tunnel_remote_addr }}"
+    descr: "{{ item.descr | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_gres }}"
+  loop_control:
+    label: "{{ item.descr | default(item.tunnel_local_addr | default('unknown')) }}"
+  when: opn_gres | length > 0
+
+- name: "Ensure LAGG {{ item.descr | default('unknown') }}"
+  by_systems.opnsense.opnsense_if_lagg:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    descr: "{{ item.descr }}"
+    proto: "{{ item.proto | default('lacp') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_laggs }}"
+  loop_control:
+    label: "{{ item.descr }}"
+  when: opn_laggs | length > 0

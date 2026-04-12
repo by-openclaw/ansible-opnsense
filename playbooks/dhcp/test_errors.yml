@@ -1,0 +1,189 @@
+---
+# test_errors.yml — DHCP (Kea) error handling + input validation
+#
+# What it tests (matching pylib 10-step error coverage):
+#   1. 401 — bad credentials → "Authentication failed"
+#   2. Timeout — unreachable host 192.0.2.1 → "timed out" or "Connection failed"
+#   3. Missing required — empty kea4 subnet → caught by pylib FieldValidationError
+#   4. Bad IP — invalid reservation IP → caught by pylib FieldValidationError
+#   5. Bad MAC — invalid reservation MAC → caught by pylib FieldValidationError
+#   6. Bad enum — invalid peer role → caught by Ansible argument_spec (choices)
+#   7. Missing required — empty kea6 subnet → caught by pylib FieldValidationError
+#
+# Static enums (choices in module — Ansible validates before pylib):
+#   - role: primary, standby
+#   - state: present, absent
+#
+# Dynamic fields (type: str — no Ansible choices, pylib or API validates):
+#   - subnet, ip_address, hw_address, interface (kea6_subnet)
+#
+# Regex used in asserts for robust error matching across versions.
+#
+# Verbosity:
+#   -v    → INFO logging in tests/integration/logs/ansible-{date}.log
+#   -vv   → DEBUG logging (all HTTP calls + manager actions)
+#
+# Run:
+#   ansible-playbook playbooks/dhcp/test_errors.yml \
+#     -e opn_host=10.6.239.114 -e opn_key=<key> -e opn_secret=<secret> -v
+
+- name: "DHCP (Kea) error handling + input validation"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── 1. Transport: 401 Unauthorized ──────────────────────────────────
+    - name: "1. Error — 401 bad credentials on kea4_subnet"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "BADKEY000000000000000"
+        secret: "BADSECRET0000000000000000000000000000000"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: "10.99.0.0/24"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "1. Assert 401 caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)authentication.*(failed|401)')
+        fail_msg: "Expected 401 auth error, got: {{ r.msg | default('no msg') }}"
+
+    # ── 2. Transport: timeout ───────────────────────────────────────────
+    - name: "2. Error — timeout on kea4_reservation (192.0.2.1)"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "192.0.2.1"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.100"
+        hw_address: "00:11:22:33:44:55"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "2. Assert timeout caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(timed.out|connection.failed)')
+        fail_msg: "Expected timeout, got: {{ r.msg | default('no msg') }}"
+
+    # ── 3. Validation: empty kea4 subnet (required) ────────────────────
+    - name: "3. Error — empty kea4 subnet"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: ""
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "3. Assert FieldValidationError on empty subnet"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|required|subnet)')
+        fail_msg: "Expected validation error on empty subnet, got: {{ r.msg | default('no msg') }}"
+
+    # ── 4. Validation: bad kea4 reservation IP ─────────────────────────
+    - name: "4. Error — bad kea4 reservation IP 999.999.999.999"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "999.999.999.999"
+        hw_address: "00:11:22:33:44:55"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "4. Assert bad IP caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|ip|address)')
+        fail_msg: "Expected IP validation error, got: {{ r.msg | default('no msg') }}"
+
+    # ── 5. Validation: bad kea4 reservation MAC ────────────────────────
+    - name: "5. Error — bad kea4 reservation MAC XX:YY:ZZ"
+      by_systems.opnsense.opnsense_kea4_reservation:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ip_address: "10.99.0.100"
+        hw_address: "XX:YY:ZZ"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "5. Assert bad MAC caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|mac|address)')
+        fail_msg: "Expected MAC validation error, got: {{ r.msg | default('no msg') }}"
+
+    # ── 6. Validation: bad kea4 peer role enum ──────────────────────────
+    - name: "6. Error — bad kea4 peer role INVALID"
+      by_systems.opnsense.opnsense_kea4_peer:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "inttest-err-peer"
+        role: "INVALID"
+        url: "http://10.99.0.2:8000/"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "6. Assert bad role enum caught with regex"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|role|must be)')
+        fail_msg: "Expected validation error on bad role, got: {{ r.msg | default('no msg') }}"
+
+    # ── 7. Validation: empty kea6 subnet (required) ────────────────────
+    - name: "7. Error — empty kea6 subnet"
+      by_systems.opnsense.opnsense_kea6_subnet:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        subnet: ""
+        interface: "lan"
+        state: present
+      register: r
+      failed_when: false
+
+    - name: "7. Assert FieldValidationError on empty kea6 subnet"
+      ansible.builtin.assert:
+        that:
+          - r.msg is defined
+          - r.msg is regex('(?i)(validation|required|subnet)')
+        fail_msg: "Expected validation error on empty subnet, got: {{ r.msg | default('no msg') }}"
+
+    # ── Result ──────────────────────────────────────────────────────────
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — DHCP error handling: 401, timeout, empty subnet, bad IP, bad MAC, bad role enum, empty kea6 subnet all caught."

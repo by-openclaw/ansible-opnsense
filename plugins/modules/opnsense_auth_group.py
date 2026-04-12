@@ -129,7 +129,7 @@ def main() -> None:
     if module.params["description"]:
         params["description"] = module.params["description"]
 
-    from opnsense.managers.auth_group import AuthGroupManager
+    from opnsense.managers.auth.group import AuthGroupManager
 
     run_module(module, AuthGroupManager, params)
 

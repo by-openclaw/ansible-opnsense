@@ -1,0 +1,496 @@
+---
+# test_ipsec_crud.yml — IPsec module CRUD lifecycle test
+#
+# What it tests:
+#   All 8 IPsec managers in dependency order:
+#     conn → child → local → remote → psk → keypair → pool → vti
+#   Each: create (disabled), idempotent noop, cleanup (reverse order)
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/vpn/test_ipsec_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "IPsec CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup (reverse order) ─────────────────────────────────
+    - name: "Pre-cleanup — remove VTI"
+      by_systems.opnsense.opnsense_ipsec_vti:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-vti
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove pool"
+      by_systems.opnsense.opnsense_ipsec_pool:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-pool
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove keypair"
+      by_systems.opnsense.opnsense_ipsec_keypair:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-keypair
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove PSK"
+      by_systems.opnsense.opnsense_ipsec_psk:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-psk
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove remote"
+      by_systems.opnsense.opnsense_ipsec_remote:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-remote
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove local"
+      by_systems.opnsense.opnsense_ipsec_local:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-local
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove child"
+      by_systems.opnsense.opnsense_ipsec_child:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-child
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove connection"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-conn
+        state: absent
+      failed_when: false
+
+    # ── Connection CRUD ──────────────────────────────────────────────
+    - name: "Create IPsec connection (disabled)"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-conn
+        enabled: false
+        state: present
+      register: r_conn
+
+    - name: "Assert connection created"
+      ansible.builtin.assert:
+        that:
+          - r_conn.changed
+
+    - name: "Idempotent — connection again"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-conn
+        enabled: false
+        state: present
+      register: r_conn
+
+    - name: "Assert connection noop"
+      ansible.builtin.assert:
+        that:
+          - not r_conn.changed
+
+    # ── Child CRUD ───────────────────────────────────────────────────
+    - name: "Create IPsec child (disabled)"
+      by_systems.opnsense.opnsense_ipsec_child:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-child
+        enabled: false
+        state: present
+      register: r_child
+
+    - name: "Assert child created"
+      ansible.builtin.assert:
+        that:
+          - r_child.changed
+
+    - name: "Idempotent — child again"
+      by_systems.opnsense.opnsense_ipsec_child:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-child
+        enabled: false
+        state: present
+      register: r_child
+
+    - name: "Assert child noop"
+      ansible.builtin.assert:
+        that:
+          - not r_child.changed
+
+    # ── Local CRUD ───────────────────────────────────────────────────
+    - name: "Create IPsec local (disabled)"
+      by_systems.opnsense.opnsense_ipsec_local:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-local
+        enabled: false
+        state: present
+      register: r_local
+
+    - name: "Assert local created"
+      ansible.builtin.assert:
+        that:
+          - r_local.changed
+
+    - name: "Idempotent — local again"
+      by_systems.opnsense.opnsense_ipsec_local:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-local
+        enabled: false
+        state: present
+      register: r_local
+
+    - name: "Assert local noop"
+      ansible.builtin.assert:
+        that:
+          - not r_local.changed
+
+    # ── Remote CRUD ──────────────────────────────────────────────────
+    - name: "Create IPsec remote (disabled)"
+      by_systems.opnsense.opnsense_ipsec_remote:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-remote
+        enabled: false
+        state: present
+      register: r_remote
+
+    - name: "Assert remote created"
+      ansible.builtin.assert:
+        that:
+          - r_remote.changed
+
+    - name: "Idempotent — remote again"
+      by_systems.opnsense.opnsense_ipsec_remote:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-remote
+        enabled: false
+        state: present
+      register: r_remote
+
+    - name: "Assert remote noop"
+      ansible.builtin.assert:
+        that:
+          - not r_remote.changed
+
+    # ── PSK CRUD ─────────────────────────────────────────────────────
+    - name: "Create IPsec PSK (disabled)"
+      by_systems.opnsense.opnsense_ipsec_psk:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-psk
+        Key: "DummyKey"
+        state: present
+      register: r_psk
+      no_log: true
+
+    - name: "Assert PSK created"
+      ansible.builtin.assert:
+        that:
+          - r_psk.changed
+
+    - name: "Idempotent — PSK again"
+      by_systems.opnsense.opnsense_ipsec_psk:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-psk
+        Key: "DummyKey"
+        state: present
+      register: r_psk
+      no_log: true
+
+    - name: "Assert PSK noop"
+      ansible.builtin.assert:
+        that:
+          - not r_psk.changed
+
+    # ── Keypair CRUD ─────────────────────────────────────────────────
+    - name: "Create IPsec keypair"
+      by_systems.opnsense.opnsense_ipsec_keypair:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-keypair
+        state: present
+      register: r_keypair
+
+    - name: "Assert keypair created"
+      ansible.builtin.assert:
+        that:
+          - r_keypair.changed
+
+    - name: "Idempotent — keypair again"
+      by_systems.opnsense.opnsense_ipsec_keypair:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-keypair
+        state: present
+      register: r_keypair
+
+    - name: "Assert keypair noop"
+      ansible.builtin.assert:
+        that:
+          - not r_keypair.changed
+
+    # ── Pool CRUD ────────────────────────────────────────────────────
+    - name: "Create IPsec pool (disabled)"
+      by_systems.opnsense.opnsense_ipsec_pool:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-pool
+        addrs: "10.99.100.0/24"
+        enabled: false
+        state: present
+      register: r_pool
+
+    - name: "Assert pool created"
+      ansible.builtin.assert:
+        that:
+          - r_pool.changed
+
+    - name: "Idempotent — pool again"
+      by_systems.opnsense.opnsense_ipsec_pool:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-pool
+        addrs: "10.99.100.0/24"
+        enabled: false
+        state: present
+      register: r_pool
+
+    - name: "Assert pool noop"
+      ansible.builtin.assert:
+        that:
+          - not r_pool.changed
+
+    # ── VTI CRUD ─────────────────────────────────────────────────────
+    - name: "Create IPsec VTI (disabled)"
+      by_systems.opnsense.opnsense_ipsec_vti:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-vti
+        enabled: false
+        state: present
+      register: r_vti
+
+    - name: "Assert VTI created"
+      ansible.builtin.assert:
+        that:
+          - r_vti.changed
+
+    - name: "Idempotent — VTI again"
+      by_systems.opnsense.opnsense_ipsec_vti:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-vti
+        enabled: false
+        state: present
+      register: r_vti
+
+    - name: "Assert VTI noop"
+      ansible.builtin.assert:
+        that:
+          - not r_vti.changed
+
+    # ── Cleanup (reverse order) ──────────────────────────────────────
+    - name: "Cleanup — delete VTI"
+      by_systems.opnsense.opnsense_ipsec_vti:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-vti
+        state: absent
+      register: r_vti_del
+
+    - name: "Cleanup — delete pool"
+      by_systems.opnsense.opnsense_ipsec_pool:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-pool
+        state: absent
+      register: r_pool_del
+
+    - name: "Cleanup — delete keypair"
+      by_systems.opnsense.opnsense_ipsec_keypair:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-ipsec-keypair
+        state: absent
+      register: r_keypair_del
+
+    - name: "Cleanup — delete PSK"
+      by_systems.opnsense.opnsense_ipsec_psk:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-psk
+        state: absent
+      register: r_psk_del
+
+    - name: "Cleanup — delete remote"
+      by_systems.opnsense.opnsense_ipsec_remote:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-remote
+        state: absent
+      register: r_remote_del
+
+    - name: "Cleanup — delete local"
+      by_systems.opnsense.opnsense_ipsec_local:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-local
+        state: absent
+      register: r_local_del
+
+    - name: "Cleanup — delete child"
+      by_systems.opnsense.opnsense_ipsec_child:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-child
+        state: absent
+      register: r_child_del
+
+    - name: "Cleanup — delete connection"
+      by_systems.opnsense.opnsense_ipsec_conn:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ipsec-conn
+        state: absent
+      register: r_conn_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_vti_del.changed
+          - r_pool_del.changed
+          - r_keypair_del.changed
+          - r_psk_del.changed
+          - r_remote_del.changed
+          - r_local_del.changed
+          - r_child_del.changed
+          - r_conn_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — IPsec CRUD lifecycle complete."

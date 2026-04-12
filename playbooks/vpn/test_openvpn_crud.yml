@@ -1,0 +1,90 @@
+---
+# test_openvpn_crud.yml — OpenVPN module CRUD lifecycle test
+#
+# What it tests:
+#   Instance: create server (disabled), idempotent noop, check_mode, cleanup
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/vpn/test_openvpn_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "OpenVPN CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    ovpn_desc: inttest-e2e-ovpn
+
+  tasks:
+    # Pre-cleanup
+    - name: "Pre-cleanup — remove instance"
+      by_systems.opnsense.opnsense_ovpn_instance:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ ovpn_desc }}"
+        state: absent
+      failed_when: false
+
+    # CRUD
+    - name: "Create OpenVPN instance (disabled)"
+      by_systems.opnsense.opnsense_ovpn_instance:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ ovpn_desc }}"
+        role: server
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert created"
+      ansible.builtin.assert:
+        that:
+          - r.changed
+          - r.action == 'created' or r.action == 'updated'
+
+    - name: "Idempotent — instance again"
+      by_systems.opnsense.opnsense_ovpn_instance:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ ovpn_desc }}"
+        role: server
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # Cleanup
+    - name: "Cleanup — delete instance"
+      by_systems.opnsense.opnsense_ovpn_instance:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ ovpn_desc }}"
+        state: absent
+      register: r
+
+    - name: "Assert cleanup"
+      ansible.builtin.assert:
+        that:
+          - r.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — OpenVPN CRUD lifecycle complete."

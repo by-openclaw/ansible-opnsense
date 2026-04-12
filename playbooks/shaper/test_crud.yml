@@ -1,0 +1,219 @@
+---
+# test_crud.yml — Traffic Shaper module CRUD lifecycle test
+#
+# What it tests:
+#   Pipe: create (disabled), idempotent noop, cleanup
+#   Queue: create (disabled), idempotent noop, cleanup
+#   Rule: create (disabled), idempotent noop, cleanup
+#   Cleanup order: rule → queue → pipe
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/shaper/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Traffic Shaper CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup ──────────────────────────────────────────────────
+    - name: "Pre-cleanup — remove rule"
+      by_systems.opnsense.opnsense_ts_rule:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-rule
+        interface: lan
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove queue"
+      by_systems.opnsense.opnsense_ts_queue:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-queue
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove pipe"
+      by_systems.opnsense.opnsense_ts_pipe:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-pipe
+        bandwidth: 10
+        state: absent
+      failed_when: false
+
+    # ── Pipe CRUD ────────────────────────────────────────────────────
+    - name: "Create pipe (disabled)"
+      by_systems.opnsense.opnsense_ts_pipe:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-pipe
+        bandwidth: "10"
+        bandwidthMetric: Mbit
+        enabled: false
+        state: present
+      register: r_pipe
+
+    - name: "Assert pipe created"
+      ansible.builtin.assert:
+        that:
+          - r_pipe.changed
+
+    - name: "Idempotent — pipe again"
+      by_systems.opnsense.opnsense_ts_pipe:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-pipe
+        bandwidth: "10"
+        bandwidthMetric: Mbit
+        enabled: false
+        state: present
+      register: r_pipe
+
+    - name: "Assert pipe noop"
+      ansible.builtin.assert:
+        that:
+          - not r_pipe.changed
+
+    # ── Queue CRUD ───────────────────────────────────────────────────
+    - name: "Create queue (disabled)"
+      by_systems.opnsense.opnsense_ts_queue:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-queue
+        weight: "50"
+        enabled: false
+        state: present
+      register: r_queue
+
+    - name: "Assert queue created"
+      ansible.builtin.assert:
+        that:
+          - r_queue.changed
+
+    - name: "Idempotent — queue again"
+      by_systems.opnsense.opnsense_ts_queue:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-queue
+        weight: "50"
+        enabled: false
+        state: present
+      register: r_queue
+
+    - name: "Assert queue noop"
+      ansible.builtin.assert:
+        that:
+          - not r_queue.changed
+
+    # ── Rule CRUD ────────────────────────────────────────────────────
+    - name: "Create rule (disabled)"
+      by_systems.opnsense.opnsense_ts_rule:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-rule
+        interface: lan
+        proto: ip
+        enabled: false
+        state: present
+      register: r_rule
+
+    - name: "Assert rule created"
+      ansible.builtin.assert:
+        that:
+          - r_rule.changed
+
+    - name: "Idempotent — rule again"
+      by_systems.opnsense.opnsense_ts_rule:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-rule
+        interface: lan
+        proto: ip
+        enabled: false
+        state: present
+      register: r_rule
+
+    - name: "Assert rule noop"
+      ansible.builtin.assert:
+        that:
+          - not r_rule.changed
+
+    # ── Cleanup: rule → queue → pipe ─────────────────────────────────
+    - name: "Cleanup — delete rule"
+      by_systems.opnsense.opnsense_ts_rule:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-rule
+        interface: lan
+        state: absent
+      register: r_rule_del
+
+    - name: "Cleanup — delete queue"
+      by_systems.opnsense.opnsense_ts_queue:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-queue
+        state: absent
+      register: r_queue_del
+
+    - name: "Cleanup — delete pipe"
+      by_systems.opnsense.opnsense_ts_pipe:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-pipe
+        bandwidth: 10
+        state: absent
+      register: r_pipe_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_rule_del.changed
+          - r_queue_del.changed
+          - r_pipe_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — Traffic Shaper CRUD lifecycle complete."

@@ -1,0 +1,207 @@
+---
+# test_crud.yml — Routing domain CRUD lifecycle test (gateway + route)
+#
+# What it tests:
+#   Gateway: create (disabled), idempotent noop
+#   Route: create (disabled, Null4 gateway), idempotent noop
+#   Check mode on route
+#   Cleanup in reverse dependency order
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Outputs: PASS message on success
+# Run: ansible-playbook playbooks/routing/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Routing CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    gw_name: inttest-e2e-gw
+    gw_interface: lan
+    gw_address: "10.11.1.1"
+    route_network: "10.99.99.0/24"
+    route_gateway: Null4
+    route_descr: inttest-e2e-route
+
+  tasks:
+    # ── Pre-cleanup (reverse dependency order) ──────────────────────────
+    - name: "Pre-cleanup — remove route"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "{{ route_network }}"
+        gateway: "{{ route_gateway }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove gateway"
+      by_systems.opnsense.opnsense_rt_gateway:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ gw_name }}"
+        interface: "{{ gw_interface }}"
+        gateway: "{{ gw_address }}"
+        state: absent
+      failed_when: false
+
+    # ── Gateway CRUD ────────────────────────────────────────────────────
+    - name: "Create gateway (disabled)"
+      by_systems.opnsense.opnsense_rt_gateway:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ gw_name }}"
+        interface: "{{ gw_interface }}"
+        gateway: "{{ gw_address }}"
+        disabled: true
+        state: present
+      register: r_gw
+
+    - name: "Assert gateway created"
+      ansible.builtin.assert:
+        that:
+          - r_gw.changed
+
+    - name: "Idempotent — gateway again"
+      by_systems.opnsense.opnsense_rt_gateway:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ gw_name }}"
+        interface: "{{ gw_interface }}"
+        gateway: "{{ gw_address }}"
+        disabled: true
+        state: present
+      register: r
+
+    - name: "Assert gateway noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Route CRUD ──────────────────────────────────────────────────────
+    - name: "Create route via (disabled)"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "{{ route_network }}"
+        gateway: "{{ route_gateway }}"
+        descr: "{{ route_descr }}"
+        disabled: true
+        state: present
+      register: r_route
+
+    - name: "Assert route created"
+      ansible.builtin.assert:
+        that:
+          - r_route.changed
+
+    - name: "Idempotent — route again"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "{{ route_network }}"
+        gateway: "{{ route_gateway }}"
+        descr: "{{ route_descr }}"
+        disabled: true
+        state: present
+      register: r
+
+    - name: "Assert route noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Check mode on route ─────────────────────────────────────────────
+    - name: "Check mode — create route 10.99.98.0/24"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "10.99.98.0/24"
+        gateway: Null4
+        descr: inttest-checkmode-route
+        disabled: true
+        state: present
+      check_mode: true
+      register: r_cm
+
+    - name: "Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - r_cm.changed
+
+    - name: "Verify check mode did not persist — delete 10.99.98.0/24"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "10.99.98.0/24"
+        gateway: Null4
+        state: absent
+      register: r_cm_verify
+      failed_when: false
+
+    - name: "Assert check mode route was not actually created"
+      ansible.builtin.assert:
+        that:
+          - not r_cm_verify.changed
+
+    # ── Cleanup (reverse dependency order) ──────────────────────────────
+    - name: "Cleanup — delete route"
+      by_systems.opnsense.opnsense_rt_route:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        network: "{{ route_network }}"
+        gateway: "{{ route_gateway }}"
+        state: absent
+      register: r_route_del
+
+    - name: "Cleanup — delete gateway"
+      by_systems.opnsense.opnsense_rt_gateway:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ gw_name }}"
+        interface: "{{ gw_interface }}"
+        gateway: "{{ gw_address }}"
+        state: absent
+      register: r_gw_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_route_del.changed
+          - r_gw_del.changed
+
+    - name: "PASS — Routing CRUD lifecycle complete"
+      ansible.builtin.debug:
+        msg: "PASS — Routing CRUD lifecycle complete."

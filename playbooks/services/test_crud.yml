@@ -1,0 +1,275 @@
+---
+# test_crud.yml — Services module CRUD lifecycle test
+#
+# What it tests:
+#   Captive portal zone: create (disabled), idempotent noop, cleanup
+#   Cron job: create, idempotent noop, cleanup
+#   DDNS account: create (disabled), idempotent noop, cleanup
+#   Syslog destination: create, idempotent noop, cleanup
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/services/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Services CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup ──────────────────────────────────────────────────
+    - name: "Pre-cleanup — remove syslog destination"
+      by_systems.opnsense.opnsense_syslog_dest:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-syslog
+        hostname: "10.11.1.100"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove DDNS account"
+      by_systems.opnsense.opnsense_ddns_account:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ddns
+        hostnames: "test.example.com"
+        checkip: web_dyndns
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove cron job"
+      by_systems.opnsense.opnsense_cron_job:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cron
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove CP zone"
+      by_systems.opnsense.opnsense_cp_zone:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cpzone
+        state: absent
+      failed_when: false
+
+    # ── Captive Portal Zone CRUD ─────────────────────────────────────
+    - name: "Create CP zone (disabled)"
+      by_systems.opnsense.opnsense_cp_zone:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cpzone
+        enabled: false
+        state: present
+      register: r_cp
+
+    - name: "Assert CP zone created"
+      ansible.builtin.assert:
+        that:
+          - r_cp.changed
+
+    - name: "Idempotent — CP zone again"
+      by_systems.opnsense.opnsense_cp_zone:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cpzone
+        enabled: false
+        state: present
+      register: r_cp
+
+    - name: "Assert CP zone noop"
+      ansible.builtin.assert:
+        that:
+          - not r_cp.changed
+
+    # ── Cron Job CRUD ────────────────────────────────────────────────
+    - name: "Create cron job"
+      by_systems.opnsense.opnsense_cron_job:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cron
+        command: "configctl firmware changelog fetch"
+        state: present
+      register: r_cron
+
+    - name: "Assert cron job created"
+      ansible.builtin.assert:
+        that:
+          - r_cron.changed
+
+    - name: "Idempotent — cron job again"
+      by_systems.opnsense.opnsense_cron_job:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cron
+        command: "configctl firmware changelog fetch"
+        state: present
+      register: r_cron
+
+    - name: "Assert cron job noop"
+      ansible.builtin.assert:
+        that:
+          - not r_cron.changed
+
+    # ── DDNS Account CRUD ────────────────────────────────────────────
+    - name: "Create DDNS account (disabled)"
+      by_systems.opnsense.opnsense_ddns_account:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ddns
+        hostnames: "test.example.com"
+        checkip: web_dyndns
+        enabled: false
+        state: present
+      register: r_ddns
+
+    - name: "Assert DDNS account created"
+      ansible.builtin.assert:
+        that:
+          - r_ddns.changed
+
+    - name: "Idempotent — DDNS account again"
+      by_systems.opnsense.opnsense_ddns_account:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ddns
+        hostnames: "test.example.com"
+        checkip: web_dyndns
+        enabled: false
+        state: present
+      register: r_ddns
+
+    - name: "Assert DDNS account noop"
+      ansible.builtin.assert:
+        that:
+          - not r_ddns.changed
+
+    # ── Syslog Destination CRUD ──────────────────────────────────────
+    - name: "Create syslog destination"
+      by_systems.opnsense.opnsense_syslog_dest:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-syslog
+        hostname: "10.11.1.100"
+        syslog_port: "514"
+        state: present
+      register: r_syslog
+
+    - name: "Assert syslog destination created"
+      ansible.builtin.assert:
+        that:
+          - r_syslog.changed
+
+    - name: "Idempotent — syslog destination again"
+      by_systems.opnsense.opnsense_syslog_dest:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-syslog
+        hostname: "10.11.1.100"
+        syslog_port: "514"
+        state: present
+      register: r_syslog
+
+    - name: "Assert syslog destination noop"
+      ansible.builtin.assert:
+        that:
+          - not r_syslog.changed
+
+    # ── Cleanup ──────────────────────────────────────────────────────
+    - name: "Cleanup — delete syslog destination"
+      by_systems.opnsense.opnsense_syslog_dest:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-syslog
+        hostname: "10.11.1.100"
+        state: absent
+      register: r_syslog_del
+
+    - name: "Cleanup — delete DDNS account"
+      by_systems.opnsense.opnsense_ddns_account:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-ddns
+        hostnames: "test.example.com"
+        checkip: web_dyndns
+        state: absent
+      register: r_ddns_del
+
+    - name: "Cleanup — delete cron job"
+      by_systems.opnsense.opnsense_cron_job:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cron
+        state: absent
+      register: r_cron_del
+
+    - name: "Cleanup — delete CP zone"
+      by_systems.opnsense.opnsense_cp_zone:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-e2e-cpzone
+        state: absent
+      register: r_cp_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_syslog_del.changed
+          - r_ddns_del.changed
+          - r_cron_del.changed
+          - r_cp_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — Services CRUD lifecycle complete."

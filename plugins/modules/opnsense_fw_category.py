@@ -1,0 +1,149 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2026 BY-SYSTEMS SRL. MIT License.
+# SPDX-License-Identifier: MIT
+# Repo: https://github.com/by-openclaw/ansible-opnsense
+
+"""Ansible module for OPNsense firewall category management."""
+
+from __future__ import annotations
+
+DOCUMENTATION = r"""
+---
+module: opnsense_fw_category
+short_description: Manage OPNsense firewall categories
+version_added: "0.2.0"
+description:
+  - Create, update, or delete firewall categories on OPNsense.
+  - Thin wrapper around lib-opnsense FwCategoryManager.ensure().
+  - Requires OPNsense >= 26.1.
+options:
+  host:
+    description: OPNsense hostname or IP address.
+    type: str
+    required: true
+  key:
+    description: OPNsense API key.
+    type: str
+    required: true
+    no_log: true
+  secret:
+    description: OPNsense API secret.
+    type: str
+    required: true
+    no_log: true
+  port:
+    description: OPNsense HTTPS port.
+    type: int
+    default: 443
+  verify_ssl:
+    description: Verify TLS certificate.
+    type: bool
+    default: false
+  name:
+    description: Category name (used as unique identifier for matching).
+    type: str
+    required: true
+  color:
+    description: Category color as hex string (e.g. "ff0000").
+    type: str
+    default: ""
+  state:
+    description: Desired state of the category.
+    type: str
+    choices: [present, absent]
+    default: present
+author:
+  - BY-SYSTEMS (@by-openclaw)
+requirements:
+  - opnsense (lib-opnsense >= 0.1.0)
+"""
+
+EXAMPLES = r"""
+- name: Create a firewall category
+  by_systems.opnsense.opnsense_fw_category:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    name: "web-servers"
+    color: "ff0000"
+    state: present
+
+- name: Idempotent check — no changes expected
+  by_systems.opnsense.opnsense_fw_category:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    name: "web-servers"
+    color: "ff0000"
+    state: present
+
+- name: Remove a firewall category
+  by_systems.opnsense.opnsense_fw_category:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    name: "web-servers"
+    state: absent
+"""
+
+RETURN = r"""
+changed:
+  description: Whether the module made any changes.
+  type: bool
+  returned: always
+action:
+  description: Action performed — created, updated, deleted, or noop.
+  type: str
+  returned: always
+uuid:
+  description: UUID of the affected resource.
+  type: str
+  returned: when available
+diff:
+  description: Before/after state for audit trail.
+  type: dict
+  returned: when changed
+"""
+
+from ansible.module_utils.basic import AnsibleModule
+
+try:
+    from ansible_collections.by_systems.opnsense.plugins.module_utils.opnsense_helper import (
+        opn_argument_spec,
+        run_module,
+    )
+except ImportError:
+    from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
+
+
+def main() -> None:
+    """Entry point for the Ansible module."""
+    spec = opn_argument_spec()
+    spec.update(
+        {
+            "name": {"type": "str", "required": True},
+            "color": {"type": "str", "default": ""},
+            "state": {
+                "type": "str",
+                "choices": ["present", "absent"],
+                "default": "present",
+            },
+        }
+    )
+
+    module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
+
+    params: dict = {
+        "name": module.params["name"],
+    }
+    if module.params["color"]:
+        params["color"] = module.params["color"]
+
+    from opnsense.managers.firewall.category import FwCategoryManager
+
+    run_module(module, FwCategoryManager, params)
+
+
+if __name__ == "__main__":
+    main()

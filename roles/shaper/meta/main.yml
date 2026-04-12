@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: shaper
+  author: BY-SYSTEMS (@by-openclaw)
+  description: Manage OPNsense traffic shaper pipes, queues, and rules
+  company: BY-SYSTEMS SRL
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Generic
+      versions:
+        - all
+  galaxy_tags:
+    - opnsense
+    - firewall
+    - network
+    - shaper
+    - qos
+dependencies: []

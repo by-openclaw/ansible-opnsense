@@ -121,7 +121,7 @@ except ImportError:
 async def _run(module: AnsibleModule) -> dict:
     """Execute API key create or delete with try/except/finally."""
     from opnsense.client import OpnsenseClient
-    from opnsense.managers.auth_api_key import AuthApiKeyManager
+    from opnsense.managers.auth.api_key import AuthApiKeyManager
 
     client = None
     try:

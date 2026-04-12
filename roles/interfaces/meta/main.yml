@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: interfaces
+  author: BY-SYSTEMS (@by-openclaw)
+  description: Manage OPNsense VLANs, VIPs, bridges, loopbacks, neighbors, VXLANs, GIF, GRE, LAGG
+  company: BY-SYSTEMS SRL
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Generic
+      versions:
+        - all
+  galaxy_tags:
+    - opnsense
+    - firewall
+    - network
+    - interfaces
+    - vlan
+dependencies: []
