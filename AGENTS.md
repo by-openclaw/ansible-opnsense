@@ -1,6 +1,6 @@
 # AGENTS.md -- ansible-opnsense
 
-> **Rules:** OPERATING-STANDARD.md (workspace) is mandatory for all agents, all sessions.
+> **Rules:** [OPERATING-STANDARD.md](https://github.com/by-openclaw/doc-platform-core/blob/main/OPERATING-STANDARD.md) is mandatory for all agents, all sessions. [SOUL.md](https://github.com/by-openclaw/doc-platform-core/blob/main/SOUL.md) · [USER.md](https://github.com/by-openclaw/doc-platform-core/blob/main/USER.md)
 
 Ansible collection wrapping lib-opnsense -- 54 thin modules across 12 scopes for full OPNsense automation with ensure() idempotency.
 
