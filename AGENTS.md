@@ -1,6 +1,5 @@
 # AGENTS.md -- ansible-opnsense
 
-> **Rules:** See [OPERATING-STANDARD.md](~/.openclaw/workspace/OPERATING-STANDARD.md) for all platform rules.
 
 Ansible collection wrapping lib-opnsense -- 54 thin modules across 12 scopes for full OPNsense automation with ensure() idempotency.
 
