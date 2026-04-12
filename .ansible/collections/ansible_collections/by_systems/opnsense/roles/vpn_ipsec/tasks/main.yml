@@ -1,0 +1,172 @@
+---
+# Role: vpn_ipsec — manage OPNsense IPsec connections, children, auth, keys, pools, VTIs.
+#
+# Variables (from defaults/main.yml):
+#   opn_ipsec_conns:    list of IPsec connection dicts
+#   opn_ipsec_children: list of IPsec child SA dicts
+#   opn_ipsec_locals:   list of IPsec local auth dicts
+#   opn_ipsec_remotes:  list of IPsec remote auth dicts
+#   opn_ipsec_psks:     list of IPsec pre-shared key dicts
+#   opn_ipsec_keypairs: list of IPsec keypair dicts
+#   opn_ipsec_pools:    list of IPsec address pool dicts
+#   opn_ipsec_vtis:     list of IPsec VTI dicts
+#
+# Order: connections -> children -> locals -> remotes -> PSKs -> keypairs -> pools -> VTIs.
+# Connections first (children/locals/remotes reference connections).
+
+- name: "Ensure IPsec connection {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_conn:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    version: "{{ item.version | default('') }}"
+    aggressive: "{{ item.aggressive | default(false) }}"
+    mobike: "{{ item.mobike | default(false) }}"
+    reauth_time: "{{ item.reauth_time | default('') }}"
+    rekey_time: "{{ item.rekey_time | default('') }}"
+    dpd_delay: "{{ item.dpd_delay | default('') }}"
+    dpd_timeout: "{{ item.dpd_timeout | default('') }}"
+    keyingtries: "{{ item.keyingtries | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_conns }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_conns | length > 0
+
+- name: "Ensure IPsec child SA {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_child:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    connection: "{{ item.connection | default('') }}"
+    mode: "{{ item.mode | default('') }}"
+    policies: "{{ item.policies | default(true) }}"
+    rekey_time: "{{ item.rekey_time | default('') }}"
+    sha256_96: "{{ item.sha256_96 | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_children }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_children | length > 0
+
+- name: "Ensure IPsec local auth {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_local:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    connection: "{{ item.connection | default('') }}"
+    auth: "{{ item.auth | default('') }}"
+    id: "{{ item.id | default('') }}"
+    eap_id: "{{ item.eap_id | default('') }}"
+    round: "{{ item.round | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_locals }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_locals | length > 0
+
+- name: "Ensure IPsec remote auth {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_remote:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    connection: "{{ item.connection | default('') }}"
+    auth: "{{ item.auth | default('') }}"
+    id: "{{ item.id | default('') }}"
+    eap_id: "{{ item.eap_id | default('') }}"
+    round: "{{ item.round | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_remotes }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_remotes | length > 0
+
+- name: "Ensure IPsec PSK {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_psk:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    ident: "{{ item.ident | default('') }}"
+    remote_ident: "{{ item.remote_ident | default('') }}"
+    keyType: "{{ item.keyType | default('') }}"
+    Key: "{{ item.Key | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_psks }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_psks | length > 0
+  no_log: "{{ item.Key is defined and item.Key != '' }}"
+
+- name: "Ensure IPsec keypair {{ item.name | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_keypair:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    name: "{{ item.name }}"
+    keyType: "{{ item.keyType | default('') }}"
+    publicKey: "{{ item.publicKey | default('') }}"
+    privateKey: "{{ item.privateKey | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_keypairs }}"
+  loop_control:
+    label: "{{ item.name | default('unknown') }}"
+  when: opn_ipsec_keypairs | length > 0
+  no_log: "{{ item.privateKey is defined and item.privateKey != '' }}"
+
+- name: "Ensure IPsec pool {{ item.name | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_pool:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    name: "{{ item.name }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    addrs: "{{ item.addrs | default('') }}"
+    dns: "{{ item.dns | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_pools }}"
+  loop_control:
+    label: "{{ item.name | default('unknown') }}"
+  when: opn_ipsec_pools | length > 0
+
+- name: "Ensure IPsec VTI {{ item.description | default('unknown') }}"
+  by_systems.opnsense.opnsense_ipsec_vti:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    reqid: "{{ item.reqid | default('') }}"
+    local: "{{ item.local | default('') }}"
+    remote: "{{ item.remote | default('') }}"
+    tunnel_local: "{{ item.tunnel_local | default('') }}"
+    tunnel_remote: "{{ item.tunnel_remote | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_ipsec_vtis }}"
+  loop_control:
+    label: "{{ item.description | default('unknown') }}"
+  when: opn_ipsec_vtis | length > 0

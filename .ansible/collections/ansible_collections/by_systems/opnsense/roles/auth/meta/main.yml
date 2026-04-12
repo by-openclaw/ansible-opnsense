@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: auth
+  namespace: by_systems
+  author: BY-SYSTEMS SRL
+  description: Manage OPNsense local users, groups, privileges, and API keys
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: GenericBSD
+      versions:
+        - all
+  galaxy_tags:
+    - opnsense
+    - firewall
+    - auth
+    - users
+    - groups
+
+dependencies: []

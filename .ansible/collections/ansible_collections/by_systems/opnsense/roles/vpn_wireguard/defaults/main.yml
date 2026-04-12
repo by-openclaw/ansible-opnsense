@@ -1,0 +1,31 @@
+---
+# Role defaults — override in playbook vars, group_vars, or host_vars.
+
+# Connection — ALL must be provided via inventory, group_vars, or extra-vars.
+# No hardcoded defaults for host, port, key, secret, or verify_ssl.
+# opn_host:
+# opn_port:
+# opn_key:
+# opn_secret:
+# opn_verify_ssl:
+
+# WireGuard server instances to ensure (list of dicts)
+# Example:
+#   opn_wg_servers:
+#     - name: "wg0"
+#       listen_port: 51820
+#       tunneladdress: "10.10.0.1/24"
+#       state: present
+opn_wg_servers: []
+
+# WireGuard client peers to ensure (list of dicts)
+# Example:
+#   opn_wg_clients:
+#     - name: "peer-remote-01"
+#       pubkey: "<base64-public-key>"
+#       tunneladdress: "10.10.0.2/32"
+#       endpoint: "vpn.example.com"
+#       serverport: 51820
+#       keepalive: 25
+#       state: present
+opn_wg_clients: []

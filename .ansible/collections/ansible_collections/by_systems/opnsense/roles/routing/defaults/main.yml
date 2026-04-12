@@ -1,0 +1,29 @@
+---
+# Role defaults — override in playbook vars, group_vars, or host_vars.
+
+# Connection — ALL must be provided via inventory, group_vars, or extra-vars.
+# No hardcoded defaults for host, port, key, secret, or verify_ssl.
+# opn_host:
+# opn_port:
+# opn_key:
+# opn_secret:
+# opn_verify_ssl:
+
+# Gateways to ensure (list of dicts)
+# Example:
+#   opn_gateways:
+#     - name: "GW_WAN"
+#       interface: wan
+#       gateway: "198.51.100.1"
+#       descr: "WAN gateway"
+#       state: present
+opn_gateways: []
+
+# Static routes to ensure (list of dicts)
+# Example:
+#   opn_routes:
+#     - network: "10.10.0.0/16"
+#       gateway: "GW_WAN"
+#       descr: "Route to remote site"
+#       state: present
+opn_routes: []

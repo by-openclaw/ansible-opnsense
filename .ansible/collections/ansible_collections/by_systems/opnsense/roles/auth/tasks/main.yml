@@ -1,0 +1,58 @@
+---
+# Role: auth — manage OPNsense users, groups, and privileges.
+#
+# Variables (from defaults/main.yml):
+#   opn_users:      list of user dicts
+#   opn_groups:     list of group dicts
+#   opn_privileges: list of privilege assignment dicts
+#
+# Order: groups first, then users, then privileges.
+# This ensures groups exist before users are assigned to them.
+
+- name: Ensure OPNsense groups
+  by_systems.opnsense.opnsense_auth_group:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description | default('') }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_groups }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure OPNsense users
+  by_systems.opnsense.opnsense_auth_user:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    name: "{{ item.name }}"
+    email: "{{ item.email | default('') }}"
+    description: "{{ item.description | default('') }}"
+    password: "{{ item.password | default(omit) }}"
+    group_memberships: "{{ item.group_memberships | default('') }}"
+    disabled: "{{ item.disabled | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: "{{ item.password is defined }}"
+
+- name: Ensure OPNsense privilege assignments
+  by_systems.opnsense.opnsense_auth_priv:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    port: "{{ opn_port }}"
+    verify_ssl: "{{ opn_verify_ssl }}"
+    priv_id: "{{ item.priv_id }}"
+    target_type: "{{ item.target_type }}"
+    target_name: "{{ item.target_name }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ opn_privileges }}"
+  loop_control:
+    label: "{{ item.priv_id }} → {{ item.target_type }}/{{ item.target_name }}"

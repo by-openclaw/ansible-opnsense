@@ -1,6 +1,6 @@
 # AGENTS.md -- ansible-opnsense
 
-Ansible collection wrapping lib-opnsense -- 54 thin modules across 12 scopes for full OPNsense automation with ensure() idempotency.
+Ansible collection wrapping lib-opnsense -- thin modules for OPNsense user/group management with ensure() idempotency.
 
 ## Always Read First
 
@@ -16,12 +16,12 @@ Before touching anything in this repo:
 Before writing, editing, or reviewing any file in this repo, read:
 
 ### doc-platform-core repo:
-1. `/home/by-systems/repos/doc-platform-core/docs/standards/` -- all standards files
-2. `/home/by-systems/repos/doc-platform-core/docs/adr/` -- all Accepted ADRs
+1. `/home/by-systems/.openclaw/workspace/repos/doc-platform-core/docs/standards/` -- all standards files
+2. `/home/by-systems/.openclaw/workspace/repos/doc-platform-core/docs/adr/` -- all Accepted ADRs
 
 ### lib-opnsense repo:
-1. `/home/by-systems/repos/lib-opnsense/CLAUDE.md` -- library constraints and API gotchas
-2. `/home/by-systems/repos/lib-opnsense/src/opnsense/` -- library source (understand what you are wrapping)
+1. `/home/by-systems/.openclaw/workspace/repos/lib-opnsense/CLAUDE.md` -- library constraints and API gotchas
+2. `/home/by-systems/.openclaw/workspace/repos/lib-opnsense/src/opnsense/` -- library source (understand what you are wrapping)
 
 ### Rules:
 - Do NOT infer. Do NOT invent policy. If a standard or ADR covers it -- follow it.
@@ -64,7 +64,7 @@ Before writing, editing, or reviewing any file in this repo, read:
 
 ## Test Device
 
-**OPNsense 26.1** at `opnsense.example.com` (port 443).
+**OPNsense 25.1.12** at `opnsense.example.com` (port 443).
 
 ### `svc-rune` -- API executor
 - API key stored in `.env` (gitignored)
@@ -84,14 +84,13 @@ Owner: @yboujraf
 
 ## Project Stats
 
-> Auto-updated on every release. Last updated: 2026-04-11
+> Auto-updated on every release. Last updated: 2026-04-04
 
 | Metric | Value |
 |---|---|
-| Version | 0.2.0 (scope expansion) |
-| Modules | 54 |
-| Roles | 11 |
-| Playbooks | 23 |
-| Integration tests | 30 |
-| CI workflows | 3 |
-| ansible-lint | 0 failures (production profile) |
+| Version | v0.1.0 |
+| Tagged releases | 0 |
+| Modules | 2 (auth_user, auth_group) |
+| Integration tests | Pending |
+| CI workflows | Pending |
+| ansible-lint | Pending |
