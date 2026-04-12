@@ -44,9 +44,7 @@ These are architectural decisions. They are NOT suggestions. Do not override the
 - Never log, print, or include credentials in return values.
 
 ### Commit and version discipline
-- All commits MUST follow Conventional Commits format.
-- Release Please is the canonical release path.
-- Never manually edit version strings in galaxy.yml.
+See OPERATING-STANDARD.md §4. Conventional Commits + Release Please.
 
 ---
 

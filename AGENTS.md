@@ -1,5 +1,7 @@
 # AGENTS.md -- ansible-opnsense
 
+> **Rules:** See [OPERATING-STANDARD.md](~/.openclaw/workspace/OPERATING-STANDARD.md) for all platform rules.
+
 Ansible collection wrapping lib-opnsense -- 54 thin modules across 12 scopes for full OPNsense automation with ensure() idempotency.
 
 ## Always Read First
@@ -10,23 +12,8 @@ Before touching anything in this repo:
 2. [`CLAUDE.md`](CLAUDE.md) -- agent-specific constraints, hard rules
 3. [`galaxy.yml`](galaxy.yml) -- collection metadata
 4. [`plugins/modules/`](plugins/modules/) -- module source
-
-## Mandatory reading before acting
-
-Before writing, editing, or reviewing any file in this repo, read:
-
-### doc-platform-core repo:
-1. `/home/by-systems/repos/doc-platform-core/docs/standards/` -- all standards files
-2. `/home/by-systems/repos/doc-platform-core/docs/adr/` -- all Accepted ADRs
-
-### lib-opnsense repo:
-1. `/home/by-systems/repos/lib-opnsense/CLAUDE.md` -- library constraints and API gotchas
-2. `/home/by-systems/repos/lib-opnsense/src/opnsense/` -- library source (understand what you are wrapping)
-
-### Rules:
-- Do NOT infer. Do NOT invent policy. If a standard or ADR covers it -- follow it.
-- If you would override a standard -- flag it with `[OVERRIDE REQUIRED]`, do NOT do it silently.
-- Cross-ADR dependencies are FORBIDDEN. Each ADR is self-contained.
+5. `/home/by-systems/repos/lib-opnsense/CLAUDE.md` -- library constraints and API gotchas
+6. `/home/by-systems/repos/lib-opnsense/src/opnsense/` -- library source (understand what you are wrapping)
 
 ## Coding & Commit Standards
 
@@ -34,24 +21,9 @@ Before writing, editing, or reviewing any file in this repo, read:
 - **Naming:** `opnsense_{domain}_{entity}.py` (ADR-0030)
 - **DOCUMENTATION/EXAMPLES/RETURN:** required docstrings on every module
 - **Linting:** `ansible-lint` -- must be clean before commit
-- **Conventional Commits** -- `type(scope): description`
-  - Types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `chore`
-  - Examples:
-    - `feat(auth): add opnsense_auth_priv module`
-    - `fix(auth_user): handle missing email field`
-    - `docs(readme): update module table`
 - **Branch naming:** `feat/{issue-id}-{description}` or `fix/{issue-id}-{description}`
 - **check_mode:** all modules must support check_mode
 - **No API logic in modules** -- all API calls go through lib-opnsense
-
-## Project Health Rules (mandatory)
-
-- **Test fails -> open issue immediately.** Never fix silently. Issue first -> fix -> close with comment + commit ref.
-- **Issue closed = CI green + specific test covers the fix.** No exceptions.
-- **CI failure on main** that isn't already tracked -> create a GitHub issue before anything else.
-- **Every open issue** has a label, is on the Project board, has a linked commit or PR when closed.
-- README reflects actual state -- not aspirational. Update after every release.
-- AGENTS.md + CLAUDE.md updated after every non-trivial change.
 
 ## What NOT To Do
 
