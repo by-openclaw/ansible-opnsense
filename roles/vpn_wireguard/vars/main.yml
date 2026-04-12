@@ -1,0 +1,6 @@
+---
+# Internal role variables — not intended to be overridden.
+# All user-facing variables are in defaults/main.yml.
+
+_vpn_wireguard_role_version: "0.1.0"
+_vpn_wireguard_min_opnsense_version: "26.1"

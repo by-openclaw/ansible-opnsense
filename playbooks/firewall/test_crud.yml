@@ -1,0 +1,608 @@
+---
+# test_crud.yml — Firewall domain CRUD lifecycle test (8 managers)
+#
+# What it tests:
+#   Alias, Filter, DNAT, SNAT, One-to-One, Category, FW Group, NPT
+#   Each: create → assert changed → idempotent → assert noop
+#   Check mode on alias
+#   Cleanup all in reverse dependency order
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Outputs: PASS message on success
+# Run: ansible-playbook playbooks/firewall/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Firewall CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    alias_name: inttest_e2e_alias
+    filter_desc: inttest-e2e-pass-udp123
+    dnat_desc: inttest-e2e-dnat-http
+    snat_desc: inttest-e2e-snat-masq
+    oto_desc: inttest-e2e-oto-binat
+    cat_name: inttest_e2e_cat
+    grp_ifname: inttest_grp
+    npt_src: "fd00:1::/64"
+    npt_dst: "fd00:2::/64"
+
+  tasks:
+    # ── Pre-cleanup (reverse dependency order) ──────────────────────────
+    - name: "Pre-cleanup — remove NPT"
+      by_systems.opnsense.opnsense_fw_npt:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        source_net: "{{ npt_src }}"
+        destination_net: "{{ npt_dst }}"
+        interface: wan
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove FW group"
+      by_systems.opnsense.opnsense_fw_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ifname: "{{ grp_ifname }}"
+        members: lan
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove category"
+      by_systems.opnsense.opnsense_fw_category:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ cat_name }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove one-to-one NAT"
+      by_systems.opnsense.opnsense_fw_one_to_one:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ oto_desc }}"
+        interface: wan
+        source_net: "10.11.3.50/32"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove SNAT"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ snat_desc }}"
+        interface: wan
+        source_net: "10.11.3.0/24"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove DNAT"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ dnat_desc }}"
+        interface: wan
+        target: "10.1.3.10"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove filter rule"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ filter_desc }}"
+        interface: wan
+        direction: "in"
+        protocol: udp
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ alias_name }}"
+        state: absent
+      failed_when: false
+
+    # ── Alias CRUD ──────────────────────────────────────────────────────
+    - name: "Create alias {{ alias_name }}"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ alias_name }}"
+        type: host
+        content: "10.11.3.100"
+        description: "E2E test alias"
+        state: present
+      register: r_alias
+
+    - name: "Assert alias created"
+      ansible.builtin.assert:
+        that:
+          - r_alias.changed
+
+    - name: "Idempotent — alias again"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ alias_name }}"
+        type: host
+        content: "10.11.3.100"
+        description: "E2E test alias"
+        state: present
+      register: r
+
+    - name: "Assert alias noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Filter CRUD ─────────────────────────────────────────────────────
+    - name: "Create filter rule — disabled UDP 123"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ filter_desc }}"
+        action: pass
+        interface: wan
+        direction: "in"
+        protocol: udp
+        source_net: "10.11.3.0/24"
+        destination_port: "123"
+        enabled: false
+        state: present
+      register: r_filter
+
+    - name: "Assert filter created"
+      ansible.builtin.assert:
+        that:
+          - r_filter.changed
+
+    - name: "Idempotent — filter again"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ filter_desc }}"
+        action: pass
+        interface: wan
+        direction: "in"
+        protocol: udp
+        source_net: "10.11.3.0/24"
+        destination_port: "123"
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert filter noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── DNAT CRUD ───────────────────────────────────────────────────────
+    - name: "Create DNAT rule — DISABLED http to 10.1.3.10:8080"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ dnat_desc }}"
+        interface: wan
+        protocol: tcp
+        target: "10.1.3.10"
+        local_port: "8080"
+        disabled: true
+        state: present
+      register: r_dnat
+
+    - name: "Assert DNAT created"
+      ansible.builtin.assert:
+        that:
+          - r_dnat.changed
+
+    - name: "Idempotent — DNAT again"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ dnat_desc }}"
+        interface: wan
+        protocol: tcp
+        target: "10.1.3.10"
+        local_port: "8080"
+        disabled: true
+        state: present
+      register: r
+
+    - name: "Assert DNAT noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── SNAT CRUD ───────────────────────────────────────────────────────
+    - name: "Create SNAT rule — masquerade from 10.11.3.0/24"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ snat_desc }}"
+        interface: wan
+        source_net: "10.11.3.0/24"
+        target: wanip
+        enabled: false
+        state: present
+      register: r_snat
+
+    - name: "Assert SNAT created"
+      ansible.builtin.assert:
+        that:
+          - r_snat.changed
+
+    - name: "Idempotent — SNAT again"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ snat_desc }}"
+        interface: wan
+        source_net: "10.11.3.0/24"
+        target: wanip
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert SNAT noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── One-to-One NAT CRUD ─────────────────────────────────────────────
+    - name: "Create one-to-one NAT — DISABLED binat"
+      by_systems.opnsense.opnsense_fw_one_to_one:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ oto_desc }}"
+        interface: wan
+        source_net: "10.11.3.50/32"
+        external: "10.11.99.50/32"
+        type: binat
+        disabled: true
+        state: present
+      register: r_oto
+
+    - name: "Assert one-to-one created"
+      ansible.builtin.assert:
+        that:
+          - r_oto.changed
+
+    - name: "Idempotent — one-to-one again"
+      by_systems.opnsense.opnsense_fw_one_to_one:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ oto_desc }}"
+        interface: wan
+        source_net: "10.11.3.50/32"
+        external: "10.11.99.50/32"
+        type: binat
+        disabled: true
+        state: present
+      register: r
+
+    - name: "Assert one-to-one noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Category CRUD ───────────────────────────────────────────────────
+    - name: "Create category {{ cat_name }}"
+      by_systems.opnsense.opnsense_fw_category:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ cat_name }}"
+        color: "ff0000"
+        state: present
+      register: r_cat
+
+    - name: "Assert category created"
+      ansible.builtin.assert:
+        that:
+          - r_cat.changed
+
+    - name: "Idempotent — category again"
+      by_systems.opnsense.opnsense_fw_category:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ cat_name }}"
+        color: "ff0000"
+        state: present
+      register: r
+
+    - name: "Assert category noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── FW Group CRUD ───────────────────────────────────────────────────
+    - name: "Create FW group {{ grp_ifname }}"
+      by_systems.opnsense.opnsense_fw_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ifname: "{{ grp_ifname }}"
+        members: lan
+        state: present
+      register: r_grp
+
+    - name: "Assert FW group created"
+      ansible.builtin.assert:
+        that:
+          - r_grp.changed
+
+    - name: "Idempotent — FW group again"
+      by_systems.opnsense.opnsense_fw_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ifname: "{{ grp_ifname }}"
+        members: lan
+        state: present
+      register: r
+
+    - name: "Assert FW group noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── NPT CRUD ────────────────────────────────────────────────────────
+    - name: "Create NPT rule — disabled"
+      by_systems.opnsense.opnsense_fw_npt:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        source_net: "{{ npt_src }}"
+        destination_net: "{{ npt_dst }}"
+        interface: wan
+        enabled: false
+        state: present
+      register: r_npt
+
+    - name: "Assert NPT created"
+      ansible.builtin.assert:
+        that:
+          - r_npt.changed
+
+    - name: "Idempotent — NPT again"
+      by_systems.opnsense.opnsense_fw_npt:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        source_net: "{{ npt_src }}"
+        destination_net: "{{ npt_dst }}"
+        interface: wan
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert NPT noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Check mode on alias ─────────────────────────────────────────────
+    - name: "Check mode — create alias inttest_checkmode_alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest_checkmode_alias
+        type: host
+        content: "10.11.3.200"
+        state: present
+      check_mode: true
+      register: r_cm
+
+    - name: "Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - r_cm.changed
+
+    - name: "Verify check mode did not persist — delete inttest_checkmode_alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest_checkmode_alias
+        state: absent
+      register: r_cm_verify
+      failed_when: false
+
+    - name: "Assert check mode alias was not actually created"
+      ansible.builtin.assert:
+        that:
+          - not r_cm_verify.changed
+
+    # ── Cleanup (reverse dependency order) ──────────────────────────────
+    - name: "Cleanup — delete NPT"
+      by_systems.opnsense.opnsense_fw_npt:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        source_net: "{{ npt_src }}"
+        destination_net: "{{ npt_dst }}"
+        interface: wan
+        state: absent
+      register: r_npt_del
+
+    - name: "Cleanup — delete FW group"
+      by_systems.opnsense.opnsense_fw_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ifname: "{{ grp_ifname }}"
+        members: lan
+        state: absent
+      register: r_grp_del
+
+    - name: "Cleanup — delete category"
+      by_systems.opnsense.opnsense_fw_category:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ cat_name }}"
+        state: absent
+      register: r_cat_del
+
+    - name: "Cleanup — delete one-to-one NAT"
+      by_systems.opnsense.opnsense_fw_one_to_one:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ oto_desc }}"
+        interface: wan
+        source_net: "10.11.3.50/32"
+        state: absent
+      register: r_oto_del
+
+    - name: "Cleanup — delete SNAT"
+      by_systems.opnsense.opnsense_fw_source_nat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ snat_desc }}"
+        interface: wan
+        source_net: "10.11.3.0/24"
+        state: absent
+      register: r_snat_del
+
+    - name: "Cleanup — delete DNAT"
+      by_systems.opnsense.opnsense_fw_dnat:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ dnat_desc }}"
+        interface: wan
+        target: "10.1.3.10"
+        state: absent
+      register: r_dnat_del
+
+    - name: "Cleanup — delete filter rule"
+      by_systems.opnsense.opnsense_fw_filter:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ filter_desc }}"
+        interface: wan
+        direction: "in"
+        protocol: udp
+        state: absent
+      register: r_filter_del
+
+    - name: "Cleanup — delete alias"
+      by_systems.opnsense.opnsense_fw_alias:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ alias_name }}"
+        state: absent
+      register: r_alias_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_npt_del.changed
+          - r_grp_del.changed
+          - r_cat_del.changed
+          - r_oto_del.changed
+          - r_snat_del.changed
+          - r_dnat_del.changed
+          - r_filter_del.changed
+          - r_alias_del.changed
+
+    - name: "PASS — Firewall CRUD lifecycle complete"
+      ansible.builtin.debug:
+        msg: "PASS — Firewall CRUD lifecycle complete."

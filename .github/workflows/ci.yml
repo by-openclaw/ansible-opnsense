@@ -34,17 +34,23 @@ jobs:
       - name: Lint with ansible-lint
         run: ansible-lint plugins/
 
-      - name: Ansible sanity check — validate module docs
+      - name: Ansible sanity check — validate module docs (all 54 modules)
         run: |
           python -c "
-          import importlib, sys
-          for mod in ['plugins.modules.opnsense_auth_user', 'plugins.modules.opnsense_auth_group', 'plugins.modules.opnsense_auth_priv', 'plugins.modules.opnsense_auth_api_key']:
-              m = importlib.import_module(mod)
-              for attr in ['DOCUMENTATION', 'EXAMPLES', 'RETURN']:
-                  if not getattr(m, attr, None):
-                      print(f'FAIL: {mod} missing {attr}')
-                      sys.exit(1)
-          print('All module docstrings present.')
+          import importlib, sys, os
+          errors = []
+          for f in sorted(os.listdir('plugins/modules')):
+              if f.endswith('.py') and f.startswith('opnsense_'):
+                  mod_name = f'plugins.modules.{f[:-3]}'
+                  m = importlib.import_module(mod_name)
+                  for attr in ['DOCUMENTATION', 'EXAMPLES', 'RETURN']:
+                      if not getattr(m, attr, None):
+                          errors.append(f'{mod_name} missing {attr}')
+          if errors:
+              for e in errors:
+                  print(f'FAIL: {e}')
+              sys.exit(1)
+          print(f'All {len([f for f in os.listdir(\"plugins/modules\") if f.endswith(\".py\") and f.startswith(\"opnsense_\")])} module docstrings validated.')
           "
 
   security:

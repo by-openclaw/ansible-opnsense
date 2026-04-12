@@ -50,19 +50,20 @@ These are architectural decisions. They are NOT suggestions. Do not override the
 
 ---
 
-## Current State (v0.1.0 -- scaffold)
+## Current State (v0.2.0 -- scope expansion)
 
 | Component | Status |
 |---|---|
-| opnsense_auth_user module | Done (try/except/finally, 26.1 compatible) |
-| opnsense_auth_group module | Done (try/except/finally, 26.1 compatible) |
-| opnsense_auth_priv module | Done (privilege assign/unassign) |
-| opnsense_auth_api_key module | Done (create/delete API keys) |
+| Modules | 54 (all import paths v1.0.0) across 12 scopes |
+| Roles | 11 (auth, firewall, interfaces, routing, dns, dhcp, vpn_ipsec, vpn_wireguard, shaper, trust, services) |
+| Playbooks | 23 (10 scopes x CRUD + errors + 3 VPN + test_all.yml) |
+| Integration tests (pytest) | 30 (error propagation + field validation + duplicate detection) |
 | module_utils/opnsense_helper | Done (shared error handling + client lifecycle) |
-| E2E test playbook | Done (playbooks/playbook_auth_e2e.yml) |
-| galaxy.yml collection metadata | Done |
-| CI: ansible-lint + sanity | Done |
-| Integration tests (live device) | Done (E2E playbook) |
+| Error handling | All 10 pylib exception types caught (incl. AmbiguousMatch, FieldValidation) |
+| Logging | One file per day (ansible-{date}.log), verbosity: none=WARNING, -v=INFO, -vv=DEBUG |
+| ansible-lint | 0 failures, production profile |
+| CI workflows | 3 (ci.yml, release-please.yml, project-board-sync.yml) |
+| Enum fixes | syslog transport: +tls4/tls6, VIP mode: removed "other", VLAN proto: fixed |
 | Dev container (.devcontainer/) | Pending |
 
 ---
@@ -72,9 +73,12 @@ These are architectural decisions. They are NOT suggestions. Do not override the
 | File | Why |
 |---|---|
 | `galaxy.yml` | Collection metadata -- namespace, version, dependencies |
-| `plugins/modules/opnsense_auth_user.py` | Local user CRUD module |
-| `plugins/modules/opnsense_auth_group.py` | Local group CRUD module |
-| `playbooks/playbook_auth.yml` | Integration test playbook |
+| `plugins/modules/` | 54 thin wrapper modules (opnsense_{scope}_{entity}.py) |
+| `plugins/module_utils/opnsense_helper.py` | Shared try/except/finally + error mapping |
+| `roles/` | 11 roles (one per scope) |
+| `playbooks/` | 23 test playbooks (CRUD + error per scope + test_all.yml) |
+| `tests/integration/` | 30 pytest tests (error propagation, field validation, duplicate) |
+| `docs/api-coverage.md` | Module coverage status per scope |
 | `README.md` | Install, usage, module reference |
 | `CHANGELOG.md` | Semantic versioning history |
 

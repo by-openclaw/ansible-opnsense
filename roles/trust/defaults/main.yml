@@ -1,0 +1,35 @@
+---
+# Role defaults — override in playbook vars, group_vars, or host_vars.
+
+# Connection — ALL must be provided via inventory, group_vars, or extra-vars.
+# No hardcoded defaults for host, port, key, secret, or verify_ssl.
+# opn_host:
+# opn_port:
+# opn_key:
+# opn_secret:
+# opn_verify_ssl:
+
+# Certificate Authorities to ensure (list of dicts)
+# Example:
+#   opn_cas:
+#     - descr: "Internal CA"
+#       action: internal
+#       commonname: "internal-ca.example.com"
+#       country: "RO"
+#       organization: "Example Corp"
+#       lifetime: 3650
+#       state: present
+opn_cas: []
+
+# Certificates to ensure (list of dicts)
+# Example:
+#   opn_certs:
+#     - descr: "Web Server Cert"
+#       caref: "<uuid-of-ca>"
+#       action: internal
+#       cert_type: server_cert
+#       commonname: "web.example.com"
+#       altnames_dns: "web.example.com,www.example.com"
+#       lifetime: 365
+#       state: present
+opn_certs: []

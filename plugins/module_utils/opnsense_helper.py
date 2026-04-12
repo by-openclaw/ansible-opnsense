@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime, timezone
 from typing import Any, Callable, Coroutine
 
 from ansible.module_utils.basic import AnsibleModule
@@ -50,17 +51,27 @@ async def run_ensure(
     from opnsense.client import OpnsenseClient
     from opnsense.logging import configure_logging
 
-    # Enable structured logging — JSON to file
-    # Priority: /var/log/opnsense/ → ~/.opnsense/logs/
-    if os.path.isdir("/var/log/opnsense"):
-        log_dir = "/var/log/opnsense"
+    # Structured logging — JSON, one file per date (appends across tasks).
+    # Ansible runs each module as a separate process, so we use a date-based
+    # filename. All tasks in one playbook run land in the same file.
+    # Pylib: tests/integration/logs/inttest-{ts}.log  (one per pytest run)
+    # Ansible: tests/integration/logs/ansible-{date}.log (one per day, appends)
+    _collection_root = os.path.realpath(
+        os.path.join(os.path.expanduser("~"),
+                     ".ansible", "collections", "ansible_collections",
+                     "by_systems", "opnsense")
+    )
+    if os.path.isdir(_collection_root):
+        log_dir = os.path.join(_collection_root, "tests", "integration", "logs")
     else:
-        log_dir = os.path.join(os.path.expanduser("~"), ".opnsense", "logs")
+        log_dir = os.path.join(os.getcwd(), "tests", "integration", "logs")
     os.makedirs(log_dir, exist_ok=True)
+    log_date = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
     configure_logging(
-        level="DEBUG" if module._verbosity >= 2 else "INFO",
-        log_file=os.path.join(log_dir, "ansible-opnsense.log"),
-        colorize=False,  # no colors in module subprocess — JSON only
+        # -v=INFO, -vv+=DEBUG, no flag=WARNING
+        level="DEBUG" if module._verbosity >= 2 else "INFO" if module._verbosity >= 1 else "WARNING",
+        log_file=os.path.join(log_dir, f"ansible-{log_date}.log"),
+        colorize=False,
     )
 
     client = None
@@ -114,6 +125,8 @@ def _handle_opnsense_error(module: AnsibleModule, exc: Exception) -> None:
     """Map lib-opnsense exceptions to Ansible fail_json with typed messages."""
     try:
         from opnsense.exceptions import (
+            AmbiguousMatchError,
+            FieldValidationError,
             OpnsenseAuthError,
             OpnsenseConnectionError,
             OpnsenseEndpointMissingError,
@@ -126,7 +139,18 @@ def _handle_opnsense_error(module: AnsibleModule, exc: Exception) -> None:
         module.fail_json(msg=str(exc), exception=str(exc))
         return
 
-    if isinstance(exc, OpnsenseAuthError):
+    if isinstance(exc, AmbiguousMatchError):
+        module.fail_json(
+            msg=f"Ambiguous match: {exc}. Multiple resources match the same "
+            f"identity keys. Use uuid parameter to target a specific resource.",
+            match_keys=exc.match_keys,
+            uuids=exc.uuids,
+        )
+    elif isinstance(exc, FieldValidationError):
+        module.fail_json(
+            msg=f"Input validation failed: {exc}. Check parameter values.",
+        )
+    elif isinstance(exc, OpnsenseAuthError):
         module.fail_json(
             msg=f"Authentication failed: {exc}. Check API key and secret.",
             status_code=401,

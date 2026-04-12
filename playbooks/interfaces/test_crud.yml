@@ -1,0 +1,626 @@
+---
+# test_crud.yml — Interfaces domain CRUD lifecycle test (9 managers)
+#
+# What it tests:
+#   VLAN, VIP, Bridge, Loopback, Neighbor, VXLAN, GIF, GRE, LAGG
+#   Each: create → assert changed → idempotent → assert noop
+#   Check mode on loopback
+#   Cleanup all in reverse dependency order
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Outputs: PASS message on success
+# Run: ansible-playbook playbooks/interfaces/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Interfaces CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    vlan_tag: 3999
+    vlan_parent: vtnet0
+    vip_address: "10.11.99.1/32"
+    vip_interface: lan
+    bridge_descr: inttest-e2e-br
+    lo_desc: inttest-e2e-lo
+    neighbor_ip: "10.11.99.99"
+    neighbor_mac: "00:11:22:33:44:55"
+    vxlan_id: 99999
+    vxlan_local: "10.11.1.1"
+    gif_local: "10.11.1.1"
+    gif_remote: "10.11.2.1"
+    gre_local: "10.11.1.1"
+    gre_remote: "10.11.3.1"
+    lagg_descr: inttest-e2e-lagg
+
+  tasks:
+    # ── Pre-cleanup (reverse dependency order) ──────────────────────────
+    - name: "Pre-cleanup — remove LAGG"
+      by_systems.opnsense.opnsense_if_lagg:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ lagg_descr }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove GRE"
+      by_systems.opnsense.opnsense_if_gre:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gre_local }}"
+        tunnel_remote_addr: "{{ gre_remote }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove GIF"
+      by_systems.opnsense.opnsense_if_gif:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gif_local }}"
+        tunnel_remote_addr: "{{ gif_remote }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove VXLAN"
+      by_systems.opnsense.opnsense_if_vxlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        vxlanid: "{{ vxlan_id }}"
+        vxlanlocal: "{{ vxlan_local }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove neighbor"
+      by_systems.opnsense.opnsense_if_neighbor:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ipaddress: "{{ neighbor_ip }}"
+        etheraddr: "{{ neighbor_mac }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove loopback"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ lo_desc }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove bridge"
+      by_systems.opnsense.opnsense_if_bridge:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ bridge_descr }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove VIP"
+      by_systems.opnsense.opnsense_if_vip:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        address: "{{ vip_address }}"
+        interface: "{{ vip_interface }}"
+        mode: ipalias
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove VLAN"
+      by_systems.opnsense.opnsense_if_vlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tag: "{{ vlan_tag }}"
+        if_parent: "{{ vlan_parent }}"
+        state: absent
+      failed_when: false
+
+    # ── VLAN CRUD ───────────────────────────────────────────────────────
+    - name: "Create VLAN tag {{ vlan_tag }}"
+      by_systems.opnsense.opnsense_if_vlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tag: "{{ vlan_tag }}"
+        if_parent: "{{ vlan_parent }}"
+        descr: "E2E test VLAN"
+        state: present
+      register: r_vlan
+
+    - name: "Assert VLAN created"
+      ansible.builtin.assert:
+        that:
+          - r_vlan.changed
+
+    - name: "Idempotent — VLAN again"
+      by_systems.opnsense.opnsense_if_vlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tag: "{{ vlan_tag }}"
+        if_parent: "{{ vlan_parent }}"
+        descr: "E2E test VLAN"
+        state: present
+      register: r
+
+    - name: "Assert VLAN noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── VIP CRUD ────────────────────────────────────────────────────────
+    - name: "Create VIP {{ vip_address }}"
+      by_systems.opnsense.opnsense_if_vip:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        address: "{{ vip_address }}"
+        interface: "{{ vip_interface }}"
+        mode: ipalias
+        network: "10.11.99.1/32"
+        state: present
+      register: r_vip
+
+    - name: "Assert VIP created"
+      ansible.builtin.assert:
+        that:
+          - r_vip.changed
+
+    - name: "Idempotent — VIP again"
+      by_systems.opnsense.opnsense_if_vip:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        address: "{{ vip_address }}"
+        interface: "{{ vip_interface }}"
+        mode: ipalias
+        network: "10.11.99.1/32"
+        state: present
+      register: r
+
+    - name: "Assert VIP noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Bridge CRUD ─────────────────────────────────────────────────────
+    - name: "Create bridge {{ bridge_descr }}"
+      by_systems.opnsense.opnsense_if_bridge:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ bridge_descr }}"
+        state: present
+      register: r_bridge
+
+    - name: "Assert bridge created"
+      ansible.builtin.assert:
+        that:
+          - r_bridge.changed
+
+    - name: "Idempotent — bridge again"
+      by_systems.opnsense.opnsense_if_bridge:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ bridge_descr }}"
+        state: present
+      register: r
+
+    - name: "Assert bridge noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Loopback CRUD ───────────────────────────────────────────────────
+    - name: "Create loopback {{ lo_desc }}"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ lo_desc }}"
+        state: present
+      register: r_lo
+
+    - name: "Assert loopback created"
+      ansible.builtin.assert:
+        that:
+          - r_lo.changed
+
+    - name: "Idempotent — loopback again"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ lo_desc }}"
+        state: present
+      register: r
+
+    - name: "Assert loopback noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Neighbor CRUD ───────────────────────────────────────────────────
+    - name: "Create neighbor {{ neighbor_ip }}"
+      by_systems.opnsense.opnsense_if_neighbor:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ipaddress: "{{ neighbor_ip }}"
+        etheraddr: "{{ neighbor_mac }}"
+        descr: "E2E test neighbor"
+        state: present
+      register: r_neighbor
+
+    - name: "Assert neighbor created"
+      ansible.builtin.assert:
+        that:
+          - r_neighbor.changed
+
+    - name: "Idempotent — neighbor again"
+      by_systems.opnsense.opnsense_if_neighbor:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ipaddress: "{{ neighbor_ip }}"
+        etheraddr: "{{ neighbor_mac }}"
+        descr: "E2E test neighbor"
+        state: present
+      register: r
+
+    - name: "Assert neighbor noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── VXLAN CRUD ──────────────────────────────────────────────────────
+    - name: "Create VXLAN id {{ vxlan_id }}"
+      by_systems.opnsense.opnsense_if_vxlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        vxlanid: "{{ vxlan_id }}"
+        vxlanlocal: "{{ vxlan_local }}"
+        state: present
+      register: r_vxlan
+
+    - name: "Assert VXLAN created"
+      ansible.builtin.assert:
+        that:
+          - r_vxlan.changed
+
+    - name: "Idempotent — VXLAN again"
+      by_systems.opnsense.opnsense_if_vxlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        vxlanid: "{{ vxlan_id }}"
+        vxlanlocal: "{{ vxlan_local }}"
+        state: present
+      register: r
+
+    - name: "Assert VXLAN noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── GIF CRUD ────────────────────────────────────────────────────────
+    - name: "Create GIF tunnel"
+      by_systems.opnsense.opnsense_if_gif:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gif_local }}"
+        tunnel_remote_addr: "{{ gif_remote }}"
+        descr: "E2E test GIF"
+        state: present
+      register: r_gif
+
+    - name: "Assert GIF created"
+      ansible.builtin.assert:
+        that:
+          - r_gif.changed
+
+    - name: "Idempotent — GIF again"
+      by_systems.opnsense.opnsense_if_gif:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gif_local }}"
+        tunnel_remote_addr: "{{ gif_remote }}"
+        descr: "E2E test GIF"
+        state: present
+      register: r
+
+    - name: "Assert GIF noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── GRE CRUD ────────────────────────────────────────────────────────
+    - name: "Create GRE tunnel"
+      by_systems.opnsense.opnsense_if_gre:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gre_local }}"
+        tunnel_remote_addr: "{{ gre_remote }}"
+        descr: "E2E test GRE"
+        state: present
+      register: r_gre
+
+    - name: "Assert GRE created"
+      ansible.builtin.assert:
+        that:
+          - r_gre.changed
+
+    - name: "Idempotent — GRE again"
+      by_systems.opnsense.opnsense_if_gre:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gre_local }}"
+        tunnel_remote_addr: "{{ gre_remote }}"
+        descr: "E2E test GRE"
+        state: present
+      register: r
+
+    - name: "Assert GRE noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── LAGG CRUD ───────────────────────────────────────────────────────
+    - name: "Create LAGG {{ lagg_descr }}"
+      by_systems.opnsense.opnsense_if_lagg:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ lagg_descr }}"
+        proto: lacp
+        state: present
+      register: r_lagg
+
+    - name: "Assert LAGG created"
+      ansible.builtin.assert:
+        that:
+          - r_lagg.changed
+
+    - name: "Idempotent — LAGG again"
+      by_systems.opnsense.opnsense_if_lagg:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ lagg_descr }}"
+        proto: lacp
+        state: present
+      register: r
+
+    - name: "Assert LAGG noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── Check mode on loopback ──────────────────────────────────────────
+    - name: "Check mode — create loopback inttest-checkmode-lo"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-checkmode-lo
+        state: present
+      check_mode: true
+      register: r_cm
+
+    - name: "Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - r_cm.changed
+
+    - name: "Verify check mode did not persist — delete inttest-checkmode-lo"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: inttest-checkmode-lo
+        state: absent
+      register: r_cm_verify
+      failed_when: false
+
+    - name: "Assert check mode loopback was not actually created"
+      ansible.builtin.assert:
+        that:
+          - not r_cm_verify.changed
+
+    # ── Cleanup (reverse dependency order) ──────────────────────────────
+    - name: "Cleanup — delete LAGG"
+      by_systems.opnsense.opnsense_if_lagg:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ lagg_descr }}"
+        state: absent
+      register: r_lagg_del
+
+    - name: "Cleanup — delete GRE"
+      by_systems.opnsense.opnsense_if_gre:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gre_local }}"
+        tunnel_remote_addr: "{{ gre_remote }}"
+        state: absent
+      register: r_gre_del
+
+    - name: "Cleanup — delete GIF"
+      by_systems.opnsense.opnsense_if_gif:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tunnel_local_addr: "{{ gif_local }}"
+        tunnel_remote_addr: "{{ gif_remote }}"
+        state: absent
+      register: r_gif_del
+
+    - name: "Cleanup — delete VXLAN"
+      by_systems.opnsense.opnsense_if_vxlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        vxlanid: "{{ vxlan_id }}"
+        vxlanlocal: "{{ vxlan_local }}"
+        state: absent
+      register: r_vxlan_del
+
+    - name: "Cleanup — delete neighbor"
+      by_systems.opnsense.opnsense_if_neighbor:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        ipaddress: "{{ neighbor_ip }}"
+        etheraddr: "{{ neighbor_mac }}"
+        state: absent
+      register: r_neighbor_del
+
+    - name: "Cleanup — delete loopback"
+      by_systems.opnsense.opnsense_if_loopback:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        description: "{{ lo_desc }}"
+        state: absent
+      register: r_lo_del
+
+    - name: "Cleanup — delete bridge"
+      by_systems.opnsense.opnsense_if_bridge:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: "{{ bridge_descr }}"
+        state: absent
+      register: r_bridge_del
+
+    - name: "Cleanup — delete VIP"
+      by_systems.opnsense.opnsense_if_vip:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        address: "{{ vip_address }}"
+        interface: "{{ vip_interface }}"
+        mode: ipalias
+        state: absent
+      register: r_vip_del
+
+    - name: "Cleanup — delete VLAN"
+      by_systems.opnsense.opnsense_if_vlan:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        tag: "{{ vlan_tag }}"
+        if_parent: "{{ vlan_parent }}"
+        state: absent
+      register: r_vlan_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_lagg_del.changed
+          - r_gre_del.changed
+          - r_gif_del.changed
+          - r_vxlan_del.changed
+          - r_neighbor_del.changed
+          - r_lo_del.changed
+          - r_bridge_del.changed
+          - r_vip_del.changed
+          - r_vlan_del.changed
+
+    - name: "PASS — Interfaces CRUD lifecycle complete"
+      ansible.builtin.debug:
+        msg: "PASS — Interfaces CRUD lifecycle complete."

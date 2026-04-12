@@ -6,7 +6,9 @@
 
 ## Contents
 
-- [Modules](modules.md) — all available modules with parameters
+- [Modules](modules.md) — all 52 modules with parameters
+- [API Coverage](api-coverage.md) — per-module status and match keys
+- [Port Field Reference](port-field-reference.md) — port param mapping across modules
 - [Roles](roles.md) — reusable roles for common tasks
 - [Inventory](inventory.md) — inventory and credential setup
 - [Error Handling](error-handling.md) — how errors are caught and reported

@@ -181,7 +181,7 @@ def main() -> None:
     if module.params["local_port"]:
         params["local-port"] = module.params["local_port"]
 
-    from opnsense.managers.fw_dnat import FwDnatManager
+    from opnsense.managers.firewall.dnat import FwDnatManager
 
     run_module(module, FwDnatManager, params)
 

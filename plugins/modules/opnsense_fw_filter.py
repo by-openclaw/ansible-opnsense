@@ -226,7 +226,7 @@ def main() -> None:
     if module.params["destination_port"]:
         params["destination_port"] = module.params["destination_port"]
 
-    from opnsense.managers.fw_filter import FwFilterManager
+    from opnsense.managers.firewall.filter import FwFilterManager
 
     run_module(module, FwFilterManager, params)
 

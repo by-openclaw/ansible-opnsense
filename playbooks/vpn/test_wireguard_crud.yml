@@ -1,0 +1,152 @@
+---
+# test_wireguard_crud.yml — WireGuard module CRUD lifecycle test
+#
+# What it tests:
+#   WG server: create (disabled, port 51899), idempotent noop, check_mode, cleanup
+#   WG client: create (disabled, dummy pubkey), idempotent noop, cleanup
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/vpn/test_wireguard_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "WireGuard CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    wg_srv: inttest-e2e-wg-srv
+    wg_peer: inttest-e2e-wg-peer
+
+  tasks:
+    # Pre-cleanup
+    - name: "Pre-cleanup — remove WG client"
+      by_systems.opnsense.opnsense_wg_client:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_peer }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove WG server"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_srv }}"
+        state: absent
+      failed_when: false
+
+    # WG Server CRUD
+    - name: "Create WG server (disabled)"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_srv }}"
+        listen_port: 51899
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert server created"
+      ansible.builtin.assert:
+        that:
+          - r.changed
+          - r.action == 'created' or r.action == 'updated'
+
+    - name: "Idempotent — server again"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_srv }}"
+        listen_port: 51899
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert server noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # WG Client CRUD
+    - name: "Create WG client (disabled)"
+      by_systems.opnsense.opnsense_wg_client:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_peer }}"
+        pubkey: "dGVzdHB1YmtleQ=="
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert client created"
+      ansible.builtin.assert:
+        that:
+          - r.changed
+
+    - name: "Idempotent — client again"
+      by_systems.opnsense.opnsense_wg_client:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_peer }}"
+        pubkey: "dGVzdHB1YmtleQ=="
+        enabled: false
+        state: present
+      register: r
+
+    - name: "Assert client noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # Cleanup
+    - name: "Cleanup — delete client"
+      by_systems.opnsense.opnsense_wg_client:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_peer }}"
+        state: absent
+      register: r_client
+
+    - name: "Cleanup — delete server"
+      by_systems.opnsense.opnsense_wg_server:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ wg_srv }}"
+        state: absent
+      register: r_server
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_client.changed
+          - r_server.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — WireGuard CRUD lifecycle complete."

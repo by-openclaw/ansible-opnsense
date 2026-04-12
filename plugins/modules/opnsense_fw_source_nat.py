@@ -195,7 +195,7 @@ def main() -> None:
     if module.params["destination_port"]:
         params["destination_port"] = module.params["destination_port"]
 
-    from opnsense.managers.fw_source_nat import FwSourceNatManager
+    from opnsense.managers.firewall.source_nat import FwSourceNatManager
 
     run_module(module, FwSourceNatManager, params)
 

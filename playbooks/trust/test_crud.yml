@@ -1,0 +1,152 @@
+---
+# test_crud.yml — Trust (CA/Cert) module CRUD lifecycle test
+#
+# What it tests:
+#   CA: create internal, idempotent noop, cleanup
+#   Cert: create internal (signed by CA), idempotent noop, cleanup
+#   Cleanup order: cert → ca
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/trust/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Trust (CA/Cert) CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup ──────────────────────────────────────────────────
+    - name: "Pre-cleanup — remove cert"
+      by_systems.opnsense.opnsense_trust_cert:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-cert
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove CA"
+      by_systems.opnsense.opnsense_trust_ca:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-ca
+        state: absent
+      failed_when: false
+
+    # ── CA CRUD ──────────────────────────────────────────────────────
+    - name: "Create internal CA"
+      by_systems.opnsense.opnsense_trust_ca:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-ca
+        action: internal
+        commonname: inttest-e2e-ca.example.com
+        country: BE
+        state: present
+      register: r_ca
+
+    - name: "Assert CA created"
+      ansible.builtin.assert:
+        that:
+          - r_ca.changed
+
+    - name: "Idempotent — CA again"
+      by_systems.opnsense.opnsense_trust_ca:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-ca
+        action: internal
+        commonname: inttest-e2e-ca.example.com
+        country: BE
+        state: present
+      register: r_ca
+
+    - name: "Assert CA noop"
+      ansible.builtin.assert:
+        that:
+          - not r_ca.changed
+
+    # ── Cert CRUD ────────────────────────────────────────────────────
+    - name: "Create internal cert"
+      by_systems.opnsense.opnsense_trust_cert:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-cert
+        action: internal
+        commonname: inttest-e2e.example.com
+        state: present
+      register: r_cert
+
+    - name: "Assert cert created"
+      ansible.builtin.assert:
+        that:
+          - r_cert.changed
+
+    - name: "Idempotent — cert again"
+      by_systems.opnsense.opnsense_trust_cert:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-cert
+        action: internal
+        commonname: inttest-e2e.example.com
+        state: present
+      register: r_cert
+
+    - name: "Assert cert noop"
+      ansible.builtin.assert:
+        that:
+          - not r_cert.changed
+
+    # ── Cleanup: cert → ca ───────────────────────────────────────────
+    - name: "Cleanup — delete cert"
+      by_systems.opnsense.opnsense_trust_cert:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-cert
+        state: absent
+      register: r_cert_del
+
+    - name: "Cleanup — delete CA"
+      by_systems.opnsense.opnsense_trust_ca:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        descr: inttest-e2e-ca
+        state: absent
+      register: r_ca_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_cert_del.changed
+          - r_ca_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — Trust (CA/Cert) CRUD lifecycle complete."

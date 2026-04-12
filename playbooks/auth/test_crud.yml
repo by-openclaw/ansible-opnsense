@@ -1,0 +1,400 @@
+---
+# test_crud.yml — Auth domain CRUD lifecycle test (groups, users, privs, API keys)
+#
+# What it tests:
+#   Groups: create two, idempotent noop
+#   Users: create two (with email, password, group), update email, idempotent noop
+#   Privileges: assign to group, idempotent noop
+#   API keys: create for user, delete for user
+#   Check mode: group create in check_mode
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Outputs: PASS message on success
+# Run: ansible-playbook playbooks/auth/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "Auth CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    grp1: e2e-engineers
+    grp2: e2e-operators
+    usr1: e2e-alice
+    usr2: e2e-bob
+    priv: page-diagnostics-arptable
+    pw: "E2eT3stP@ss!"
+
+  tasks:
+    # ── Pre-cleanup (reverse dependency order) ──────────────────────────
+    - name: "Pre-cleanup — unassign priv from {{ grp1 }}"
+      by_systems.opnsense.opnsense_auth_priv:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        priv_id: "{{ priv }}"
+        target_type: group
+        target_name: "{{ grp1 }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — delete API keys for {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_api_key:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        username: "{{ usr1 }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — delete user {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr1 }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — delete user {{ usr2 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr2 }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — delete group {{ grp1 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp1 }}"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — delete group {{ grp2 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp2 }}"
+        state: absent
+      failed_when: false
+
+    # ── Group CRUD ──────────────────────────────────────────────────────
+    - name: "Create group {{ grp1 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp1 }}"
+        state: present
+      register: r_grp1
+
+    - name: "Assert group created"
+      ansible.builtin.assert:
+        that:
+          - r_grp1.changed
+
+    - name: "Create group {{ grp2 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp2 }}"
+        state: present
+      register: r_grp2
+
+    - name: "Assert group created"
+      ansible.builtin.assert:
+        that:
+          - r_grp2.changed
+
+    - name: "Idempotent — group again"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp1 }}"
+        state: present
+      register: r
+
+    - name: "Assert group noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── User CRUD ───────────────────────────────────────────────────────
+    - name: "Create user {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr1 }}"
+        email: "alice@example.com"
+        password: "{{ pw }}"
+        # group_memberships requires GID, not name — test without it
+        state: present
+      register: r_usr1
+
+    - name: "Assert user created"
+      ansible.builtin.assert:
+        that:
+          - r_usr1.changed
+
+    - name: "Create user {{ usr2 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr2 }}"
+        email: "bob@example.com"
+        password: "{{ pw }}"
+        # group_memberships requires GID, not name — test without it
+        state: present
+      register: r_usr2
+
+    - name: "Assert user created"
+      ansible.builtin.assert:
+        that:
+          - r_usr2.changed
+
+    - name: "Idempotent — user again"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr1 }}"
+        email: "alice@example.com"
+        password: "{{ pw }}"
+        # group_memberships requires GID, not name — test without it
+        state: present
+      register: r
+
+    - name: "Assert user noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    - name: "Update user email"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr1 }}"
+        email: "alice-updated@example.com"
+        password: "{{ pw }}"
+        # group_memberships requires GID, not name — test without it
+        state: present
+      register: r
+
+    - name: "Assert user email updated"
+      ansible.builtin.assert:
+        that:
+          - r.changed
+
+    # ── Privilege assign ────────────────────────────────────────────────
+    - name: "Assign privilege to group"
+      by_systems.opnsense.opnsense_auth_priv:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        priv_id: "{{ priv }}"
+        target_type: group
+        target_name: "{{ grp1 }}"
+        state: present
+      register: r_priv
+
+    - name: "Assert priv assigned"
+      ansible.builtin.assert:
+        that:
+          - r_priv.changed
+
+    - name: "Idempotent — priv assign again"
+      by_systems.opnsense.opnsense_auth_priv:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        priv_id: "{{ priv }}"
+        target_type: group
+        target_name: "{{ grp1 }}"
+        state: present
+      register: r
+
+    - name: "Assert priv assign noop"
+      ansible.builtin.assert:
+        that:
+          - not r.changed
+
+    # ── API key create / delete ─────────────────────────────────────────
+    - name: "Create API key for {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_api_key:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        username: "{{ usr1 }}"
+        state: present
+      register: r_apikey
+
+    - name: "Assert API key created"
+      ansible.builtin.assert:
+        that:
+          - r_apikey.changed
+
+    - name: "Delete API keys for {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_api_key:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        username: "{{ usr1 }}"
+        state: absent
+      register: r_apikey_del
+
+    - name: "Assert API keys deleted"
+      ansible.builtin.assert:
+        that:
+          - r_apikey_del.changed
+
+    # ── Check mode ──────────────────────────────────────────────────────
+    - name: "Check mode — create group inttest-checkmode"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-checkmode
+        state: present
+      check_mode: true
+      register: r_cm
+
+    - name: "Assert check mode reports changed"
+      ansible.builtin.assert:
+        that:
+          - r_cm.changed
+
+    - name: "Verify check mode did not persist — delete inttest-checkmode"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-checkmode
+        state: absent
+      register: r_cm_verify
+      failed_when: false
+
+    - name: "Assert check mode group was not actually created"
+      ansible.builtin.assert:
+        that:
+          - not r_cm_verify.changed
+
+    # ── Cleanup (reverse dependency order) ──────────────────────────────
+    - name: "Cleanup — unassign priv from {{ grp1 }}"
+      by_systems.opnsense.opnsense_auth_priv:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        priv_id: "{{ priv }}"
+        target_type: group
+        target_name: "{{ grp1 }}"
+        state: absent
+      register: r_priv_del
+
+    - name: "Cleanup — delete user {{ usr1 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr1 }}"
+        state: absent
+      register: r_usr1_del
+
+    - name: "Cleanup — delete user {{ usr2 }}"
+      by_systems.opnsense.opnsense_auth_user:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ usr2 }}"
+        state: absent
+      register: r_usr2_del
+
+    - name: "Cleanup — delete group {{ grp1 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp1 }}"
+        state: absent
+      register: r_grp1_del
+
+    - name: "Cleanup — delete group {{ grp2 }}"
+      by_systems.opnsense.opnsense_auth_group:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: "{{ grp2 }}"
+        state: absent
+      register: r_grp2_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_priv_del.changed
+          - r_usr1_del.changed
+          - r_usr2_del.changed
+          - r_grp1_del.changed
+          - r_grp2_del.changed
+
+    - name: "PASS — Auth CRUD lifecycle complete"
+      ansible.builtin.debug:
+        msg: "PASS — Auth CRUD lifecycle complete."

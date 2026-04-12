@@ -176,7 +176,7 @@ def main() -> None:
     if module.params["proto"]:
         params["proto"] = module.params["proto"]
 
-    from opnsense.managers.fw_alias import FwAliasManager
+    from opnsense.managers.firewall.alias import FwAliasManager
 
     run_module(module, FwAliasManager, params)
 

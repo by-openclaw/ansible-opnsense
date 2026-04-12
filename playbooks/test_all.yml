@@ -1,0 +1,89 @@
+---
+# test_all.yml — Master E2E test suite
+#
+# Imports all scope playbooks in dependency order, then all error playbooks.
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/test_all.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+# ── CRUD playbooks (dependency order) ────────────────────────────────
+
+# Auth (no external deps)
+# - name: "Import auth CRUD"
+#   ansible.builtin.import_playbook: auth/test_crud.yml
+
+# Firewall (no external deps)
+# - name: "Import firewall CRUD"
+#   ansible.builtin.import_playbook: firewall/test_crud.yml
+
+# Interfaces (no external deps)
+# - name: "Import interfaces CRUD"
+#   ansible.builtin.import_playbook: interfaces/test_crud.yml
+
+# Routing (no external deps)
+# - name: "Import routing CRUD"
+#   ansible.builtin.import_playbook: routing/test_crud.yml
+
+# DNS (Unbound)
+- name: "Import DNS CRUD"
+  ansible.builtin.import_playbook: dns/test_crud.yml
+
+# DHCP (Kea)
+- name: "Import DHCP CRUD"
+  ansible.builtin.import_playbook: dhcp/test_crud.yml
+
+# Trust (CA/Cert)
+- name: "Import trust CRUD"
+  ansible.builtin.import_playbook: trust/test_crud.yml
+
+# VPN — WireGuard
+- name: "Import WireGuard CRUD"
+  ansible.builtin.import_playbook: vpn/test_wireguard_crud.yml
+
+# VPN — IPsec
+- name: "Import IPsec CRUD"
+  ansible.builtin.import_playbook: vpn/test_ipsec_crud.yml
+
+# VPN — OpenVPN
+- name: "Import OpenVPN CRUD"
+  ansible.builtin.import_playbook: vpn/test_openvpn_crud.yml
+
+# Traffic Shaper
+- name: "Import shaper CRUD"
+  ansible.builtin.import_playbook: shaper/test_crud.yml
+
+# Services (CP, Cron, DDNS, Syslog)
+- name: "Import services CRUD"
+  ansible.builtin.import_playbook: services/test_crud.yml
+
+# ── Error playbooks ─────────────────────────────────────────────────
+
+# - name: "Import auth errors"
+#   ansible.builtin.import_playbook: auth/test_errors.yml
+
+# - name: "Import firewall errors"
+#   ansible.builtin.import_playbook: firewall/test_errors.yml
+
+# - name: "Import interfaces errors"
+#   ansible.builtin.import_playbook: interfaces/test_errors.yml
+
+# - name: "Import routing errors"
+#   ansible.builtin.import_playbook: routing/test_errors.yml
+
+- name: "Import DNS errors"
+  ansible.builtin.import_playbook: dns/test_errors.yml
+
+- name: "Import DHCP errors"
+  ansible.builtin.import_playbook: dhcp/test_errors.yml
+
+- name: "Import trust errors"
+  ansible.builtin.import_playbook: trust/test_errors.yml
+
+- name: "Import VPN errors"
+  ansible.builtin.import_playbook: vpn/test_errors.yml
+
+- name: "Import shaper errors"
+  ansible.builtin.import_playbook: shaper/test_errors.yml
+
+- name: "Import services errors"
+  ansible.builtin.import_playbook: services/test_errors.yml

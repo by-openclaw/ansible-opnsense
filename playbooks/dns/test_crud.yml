@@ -1,0 +1,277 @@
+---
+# test_crud.yml — DNS (Unbound) module CRUD lifecycle test
+#
+# What it tests:
+#   Host override: create, idempotent noop, cleanup
+#   Forward: create, idempotent noop, cleanup
+#   ACL: create, idempotent noop, cleanup
+#   DoT: create, idempotent noop, cleanup
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/dns/test_crud.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+
+- name: "DNS (Unbound) CRUD lifecycle"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+
+  tasks:
+    # ── Pre-cleanup ──────────────────────────────────────────────────
+    - name: "Pre-cleanup — remove DoT"
+      by_systems.opnsense.opnsense_ub_dot:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        server: "1.1.1.1"
+        dot_port: "853"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove ACL"
+      by_systems.opnsense.opnsense_ub_acl:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-acl
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove forward"
+      by_systems.opnsense.opnsense_ub_forward:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        domain: inttest.test
+        server: "10.11.2.53"
+        state: absent
+      failed_when: false
+
+    - name: "Pre-cleanup — remove host override"
+      by_systems.opnsense.opnsense_ub_host_override:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        hostname: inttest-e2e
+        domain: lab.test
+        server: "10.11.2.99"
+        state: absent
+      failed_when: false
+
+    # ── Host Override CRUD ───────────────────────────────────────────
+    - name: "Create host override"
+      by_systems.opnsense.opnsense_ub_host_override:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        hostname: inttest-e2e
+        domain: lab.test
+        server: "10.11.2.99"
+        state: present
+      register: r_ho
+
+    - name: "Assert host override created"
+      ansible.builtin.assert:
+        that:
+          - r_ho.changed
+
+    - name: "Idempotent — host override again"
+      by_systems.opnsense.opnsense_ub_host_override:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        hostname: inttest-e2e
+        domain: lab.test
+        server: "10.11.2.99"
+        state: present
+      register: r_ho
+
+    - name: "Assert host override noop"
+      ansible.builtin.assert:
+        that:
+          - not r_ho.changed
+
+    # ── Forward CRUD ─────────────────────────────────────────────────
+    - name: "Create forward"
+      by_systems.opnsense.opnsense_ub_forward:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        domain: inttest.test
+        server: "10.11.2.53"
+        state: present
+      register: r_fwd
+
+    - name: "Assert forward created"
+      ansible.builtin.assert:
+        that:
+          - r_fwd.changed
+
+    - name: "Idempotent — forward again"
+      by_systems.opnsense.opnsense_ub_forward:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        domain: inttest.test
+        server: "10.11.2.53"
+        state: present
+      register: r_fwd
+
+    - name: "Assert forward noop"
+      ansible.builtin.assert:
+        that:
+          - not r_fwd.changed
+
+    # ── ACL CRUD ─────────────────────────────────────────────────────
+    - name: "Create ACL"
+      by_systems.opnsense.opnsense_ub_acl:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-acl
+        action: allow
+        networks: "10.11.0.0/16"
+        state: present
+      register: r_acl
+
+    - name: "Assert ACL created"
+      ansible.builtin.assert:
+        that:
+          - r_acl.changed
+
+    - name: "Idempotent — ACL again"
+      by_systems.opnsense.opnsense_ub_acl:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-acl
+        action: allow
+        networks: "10.11.0.0/16"
+        state: present
+      register: r_acl
+
+    - name: "Assert ACL noop"
+      ansible.builtin.assert:
+        that:
+          - not r_acl.changed
+
+    # ── DoT CRUD ─────────────────────────────────────────────────────
+    - name: "Create DoT (disabled)"
+      by_systems.opnsense.opnsense_ub_dot:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        server: "1.1.1.1"
+        dot_port: "853"
+        enabled: false
+        state: present
+      register: r_dot
+
+    - name: "Assert DoT created"
+      ansible.builtin.assert:
+        that:
+          - r_dot.changed
+
+    - name: "Idempotent — DoT again"
+      by_systems.opnsense.opnsense_ub_dot:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        server: "1.1.1.1"
+        dot_port: "853"
+        enabled: false
+        state: present
+      register: r_dot
+
+    - name: "Assert DoT noop"
+      ansible.builtin.assert:
+        that:
+          - not r_dot.changed
+
+    # ── Cleanup ──────────────────────────────────────────────────────
+    - name: "Cleanup — delete DoT"
+      by_systems.opnsense.opnsense_ub_dot:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        server: "1.1.1.1"
+        dot_port: "853"
+        state: absent
+      register: r_dot_del
+
+    - name: "Cleanup — delete ACL"
+      by_systems.opnsense.opnsense_ub_acl:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        name: inttest-e2e-acl
+        state: absent
+      register: r_acl_del
+
+    - name: "Cleanup — delete forward"
+      by_systems.opnsense.opnsense_ub_forward:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        domain: inttest.test
+        server: "10.11.2.53"
+        state: absent
+      register: r_fwd_del
+
+    - name: "Cleanup — delete host override"
+      by_systems.opnsense.opnsense_ub_host_override:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        hostname: inttest-e2e
+        domain: lab.test
+        server: "10.11.2.99"
+        state: absent
+      register: r_ho_del
+
+    - name: "Assert cleanup complete"
+      ansible.builtin.assert:
+        that:
+          - r_dot_del.changed
+          - r_acl_del.changed
+          - r_fwd_del.changed
+          - r_ho_del.changed
+
+    - name: "PASS"
+      ansible.builtin.debug:
+        msg: "PASS — DNS (Unbound) CRUD lifecycle complete."
