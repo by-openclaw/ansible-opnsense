@@ -78,9 +78,35 @@ options:
     type: str
     required: true
   interface:
-    description: Interface to use for IP detection.
+    description: Interface to use for IP detection (required when O(checkip=Interface)).
     type: str
     default: ""
+  zone:
+    description:
+      - DNS zone. Required by providers that resolve a zone first (e.g. Cloudflare,
+        which queries C(/client/v4/zones?name=<zone>) for the zone ID).
+    type: str
+    default: ""
+  resourceId:
+    description: Provider resource identifier (e.g. an explicit zone ID) when required.
+    type: str
+    default: ""
+  wildcard:
+    description: Enable wildcard updates.
+    type: bool
+    default: false
+  checkip_timeout:
+    description: IP check timeout in seconds. Sent only when greater than 0.
+    type: int
+    default: 0
+  force_ssl:
+    description: Force SSL/TLS for the provider update request.
+    type: bool
+    default: true
+  ttl:
+    description: Record TTL in seconds. Sent only when greater than 0.
+    type: int
+    default: 0
   state:
     description: Desired state of the DDNS account.
     type: str
@@ -93,17 +119,21 @@ requirements:
 """
 
 EXAMPLES = r"""
-- name: Create a Cloudflare DDNS account
+- name: Create a Cloudflare DDNS account (scoped API token; bind to a WAN interface)
   by_systems.opnsense.opnsense_ddns_account:
     host: "{{ opn_host }}"
     key: "{{ opn_key }}"
     secret: "{{ opn_secret }}"
     description: "Cloudflare DDNS"
     service: cloudflare
-    username: "{{ ddns_user }}"
+    # username empty (no '@') => Cloudflare Bearer-token auth; password = API token
+    username: ""
     password: "{{ ddns_token }}"
+    zone: "example.com"
     hostnames: "home.example.com"
-    checkip: "web_dyndns"
+    checkip: "Interface"
+    interface: "opt12"
+    ttl: 300
     state: present
 
 - name: Remove a DDNS account
@@ -162,6 +192,12 @@ def main() -> None:
             "hostnames": {"type": "str", "required": True},
             "checkip": {"type": "str", "required": True},
             "interface": {"type": "str", "default": ""},
+            "zone": {"type": "str", "default": ""},
+            "resourceId": {"type": "str", "default": ""},
+            "wildcard": {"type": "bool", "default": False},
+            "checkip_timeout": {"type": "int", "default": 0},
+            "force_ssl": {"type": "bool", "default": True},
+            "ttl": {"type": "int", "default": 0},
             "state": {
                 "type": "str",
                 "choices": ["present", "absent"],
@@ -190,6 +226,18 @@ def main() -> None:
         params["password"] = module.params["password"]
     if module.params["interface"]:
         params["interface"] = module.params["interface"]
+    if module.params["zone"]:
+        params["zone"] = module.params["zone"]
+    if module.params["resourceId"]:
+        params["resourceId"] = module.params["resourceId"]
+    if module.params["checkip_timeout"]:
+        params["checkip_timeout"] = str(module.params["checkip_timeout"])
+    if module.params["ttl"]:
+        params["ttl"] = str(module.params["ttl"])
+    # Booleans always forwarded as OPNsense "1"/"0" (defaults match the lib model:
+    # force_ssl=1, wildcard=0) so existing callers are unaffected.
+    params["force_ssl"] = "1" if module.params["force_ssl"] else "0"
+    params["wildcard"] = "1" if module.params["wildcard"] else "0"
 
     from opnsense.managers.services.ddns_account import DdnsAccountManager
 

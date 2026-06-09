@@ -147,8 +147,11 @@
         port: "{{ opn_port }}"
         verify_ssl: "{{ opn_verify_ssl }}"
         description: inttest-e2e-ddns
+        service: cloudflare
+        zone: "example.com"
         hostnames: "test.example.com"
         checkip: web_dyndns
+        ttl: 300
         enabled: false
         state: present
       register: r_ddns
@@ -166,8 +169,11 @@
         port: "{{ opn_port }}"
         verify_ssl: "{{ opn_verify_ssl }}"
         description: inttest-e2e-ddns
+        service: cloudflare
+        zone: "example.com"
         hostnames: "test.example.com"
         checkip: web_dyndns
+        ttl: 300
         enabled: false
         state: present
       register: r_ddns
