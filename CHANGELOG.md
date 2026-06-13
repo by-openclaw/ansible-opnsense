@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/by-openclaw/ansible-opnsense/compare/v0.2.0...v0.3.0) (2026-06-13)
+
+
+### Features
+
+* **services:** forward Cloudflare-required fields in opnsense_ddns_account ([166f1cc](https://github.com/by-openclaw/ansible-opnsense/commit/166f1cc1e6cf5987b1aaea89e973a9108d7c6469))
+* **services:** forward zone/ttl/force_ssl/wildcard/resourceId/checkip_timeout in opnsense_ddns_account ([4d4f1d6](https://github.com/by-openclaw/ansible-opnsense/commit/4d4f1d698f382d848f71ceb90ea787f57eb2139b)), closes [#8](https://github.com/by-openclaw/ansible-opnsense/issues/8)
+
+
+### Bug Fixes
+
+* **agents:** link to doc-platform-core for agent contract files ([9d8e425](https://github.com/by-openclaw/ansible-opnsense/commit/9d8e425651dc64a5ea99b10da379dc49c95345f1))
+* **agents:** remove unreachable OPERATING-STANDARD.md link ([e67163d](https://github.com/by-openclaw/ansible-opnsense/commit/e67163d406717a97570106e455ed4ca9ebfde983))
+* **agents:** restore OPERATING-STANDARD reference as plain text ([706e648](https://github.com/by-openclaw/ansible-opnsense/commit/706e6485fcdbc7d2c340dec933f5b25f90658dc8))
+
 ## [0.2.0](https://github.com/by-openclaw/ansible-opnsense/compare/v0.1.0...v0.2.0) (2026-04-12)
 
 
