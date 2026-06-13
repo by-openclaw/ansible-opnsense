@@ -139,3 +139,9 @@
 | Services | `opnsense_cron_job` | `CronJobManager` | `description` | 26.1 | `DONE` |
 | Services | `opnsense_ddns_account` | `DdnsAccountManager` | `description` | 26.1 | `DONE` |
 | Services | `opnsense_syslog_dest` | `SyslogDestManager` | `description` | 26.1 | `DONE` |
+
+> `opnsense_ddns_account` forwards the full lib model: `description, enabled,
+> service, protocol, server, username, password, hostnames, checkip, interface,
+> zone, resourceId, wildcard, checkip_timeout, force_ssl, ttl`. `zone` is required
+> by the Cloudflare backend (provided by the `os-ddclient` plugin, which keeps the
+> `/api/dyndns` MVC namespace).
