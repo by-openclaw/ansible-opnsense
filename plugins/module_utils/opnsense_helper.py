@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -57,9 +57,14 @@ async def run_ensure(
     # Pylib: tests/integration/logs/inttest-{ts}.log  (one per pytest run)
     # Ansible: tests/integration/logs/ansible-{date}.log (one per day, appends)
     _collection_root = os.path.realpath(
-        os.path.join(os.path.expanduser("~"),
-                     ".ansible", "collections", "ansible_collections",
-                     "by_systems", "opnsense")
+        os.path.join(
+            os.path.expanduser("~"),
+            ".ansible",
+            "collections",
+            "ansible_collections",
+            "by_systems",
+            "opnsense",
+        )
     )
     if os.path.isdir(_collection_root):
         log_dir = os.path.join(_collection_root, "tests", "integration", "logs")
@@ -69,7 +74,11 @@ async def run_ensure(
     log_date = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
     configure_logging(
         # -v=INFO, -vv+=DEBUG, no flag=WARNING
-        level="DEBUG" if module._verbosity >= 2 else "INFO" if module._verbosity >= 1 else "WARNING",
+        level="DEBUG"
+        if module._verbosity >= 2
+        else "INFO"
+        if module._verbosity >= 1
+        else "WARNING",
         log_file=os.path.join(log_dir, f"ansible-{log_date}.log"),
         colorize=False,
     )
@@ -86,11 +95,24 @@ async def run_ensure(
         await client.__aenter__()
 
         mgr = manager_factory(client)
-        result = await mgr.ensure(
-            state=module.params["state"],
-            params=params,
-            check_mode=module.check_mode,
-        )
+        # Service managers take only (state, check_mode) — there is nothing to
+        # diff against, the state IS the request. Resource and singleton
+        # managers take params as well. Inspect rather than special-case, so a
+        # new service module needs no change here.
+        import inspect
+
+        ensure_params = inspect.signature(mgr.ensure).parameters
+        if "params" in ensure_params:
+            result = await mgr.ensure(
+                state=module.params["state"],
+                params=params,
+                check_mode=module.check_mode,
+            )
+        else:
+            result = await mgr.ensure(
+                state=module.params["state"],
+                check_mode=module.check_mode,
+            )
 
         diff: dict[str, Any] = {}
         if result.before is not None:
