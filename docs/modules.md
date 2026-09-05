@@ -120,6 +120,8 @@ Manage D-NAT / port forward rules.
 | `log` | bool | no | false | Log matching packets |
 | `state` | str | no | present | `present` or `absent` |
 
+Port-forward matching (added 0.3.0): `source_net`/`source_port`/`source_not`, `destination_net`/`destination_port`/`destination_not` (the WAN address + external port — alias names, `wanip`, interface-address keywords like `opt12ip`, or CIDR/number/range), `sequence`, `natreflection` (`purenat`/`disable`), `nordr`. Without `destination_*` the rule matches any destination — always set them for a real port forward.
+
 ### opnsense_fw_source_nat
 
 Manage source NAT (outbound NAT / masquerade) rules.
