@@ -67,6 +67,45 @@ options:
     description: Internal target port.
     type: str
     default: ""
+  source_net:
+    description: Source network/host (alias name, CIDR, C(any)). Empty = any.
+    type: str
+    default: ""
+  source_port:
+    description: Source port (alias name, number or range). Empty = any.
+    type: str
+    default: ""
+  source_not:
+    description: Invert the source match.
+    type: bool
+    default: false
+  destination_net:
+    description: >
+      Destination network/host to match — for a port forward this is the WAN
+      address: an alias name, C(wanip), an interface address keyword such as
+      C(opt12ip), or a CIDR. Empty = any.
+    type: str
+    default: ""
+  destination_port:
+    description: Destination (external) port to match — alias name, number or range.
+    type: str
+    default: ""
+  destination_not:
+    description: Invert the destination match.
+    type: bool
+    default: false
+  sequence:
+    description: Rule order (lower first). Empty = OPNsense default placement.
+    type: int
+  natreflection:
+    description: NAT reflection mode for this rule.
+    type: str
+    choices: ["", purenat, disable]
+    default: ""
+  nordr:
+    description: No RDR (disable redirect, e.g. for exclusions).
+    type: bool
+    default: false
   disabled:
     description: Whether the rule is disabled.
     type: bool
@@ -100,6 +139,9 @@ EXAMPLES = r"""
     protocol: tcp
     target: "10.6.225.10"
     local_port: "443"
+    destination_net: host4_wan_pub
+    destination_port: port_https
+    sequence: 10
     state: present
 
 - name: Remove a port forward
@@ -157,6 +199,19 @@ def main() -> None:
             "protocol": {"type": "str", "default": "tcp"},
             "target": {"type": "str", "required": True},
             "local_port": {"type": "str", "default": ""},
+            "source_net": {"type": "str", "default": ""},
+            "source_port": {"type": "str", "default": ""},
+            "source_not": {"type": "bool", "default": False},
+            "destination_net": {"type": "str", "default": ""},
+            "destination_port": {"type": "str", "default": ""},
+            "destination_not": {"type": "bool", "default": False},
+            "sequence": {"type": "int"},
+            "natreflection": {
+                "type": "str",
+                "choices": ["", "purenat", "disable"],
+                "default": "",
+            },
+            "nordr": {"type": "bool", "default": False},
             "disabled": {"type": "bool", "default": False},
             "log": {"type": "bool", "default": False},
             "state": {
@@ -180,6 +235,34 @@ def main() -> None:
     }
     if module.params["local_port"]:
         params["local-port"] = module.params["local_port"]
+    src = {
+        k: v
+        for k, v in {
+            "network": module.params["source_net"],
+            "port": module.params["source_port"],
+            "not": "1" if module.params["source_not"] else "",
+        }.items()
+        if v
+    }
+    if src:
+        params["source"] = src
+    dst = {
+        k: v
+        for k, v in {
+            "network": module.params["destination_net"],
+            "port": module.params["destination_port"],
+            "not": "1" if module.params["destination_not"] else "",
+        }.items()
+        if v
+    }
+    if dst:
+        params["destination"] = dst
+    if module.params["sequence"] is not None:
+        params["sequence"] = module.params["sequence"]
+    if module.params["natreflection"]:
+        params["natreflection"] = module.params["natreflection"]
+    if module.params["nordr"]:
+        params["nordr"] = "1"
 
     from opnsense.managers.firewall.dnat import FwDnatManager
 

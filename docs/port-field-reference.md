@@ -21,6 +21,8 @@ the mapping for every module with a port field.
 | `opnsense_fw_filter` | `destination_port` | `destination_port` | str | numeric, range, alias | Alias must exist in fw_alias (type=port) |
 | `opnsense_fw_source_nat` | `source_port` | `source_port` | str | numeric, range, alias | Same behavior as fw_filter |
 | `opnsense_fw_source_nat` | `destination_port` | `destination_port` | str | numeric, range, alias | Same behavior as fw_filter |
+| `opnsense_fw_dnat` | `destination_port` | `destination.port` | str | alias name, numeric, range | External (WAN) port to match |
+| `opnsense_fw_dnat` | `source_port` | `source.port` | str | alias name, numeric, range | Source port to match |
 | `opnsense_fw_dnat` | `local_port` | `local_port` | str | numeric, range | Internal target port; range uses colon separator |
 | `opnsense_wg_server` | `listen_port` | `port` | int | numeric only | WireGuard tunnel listen port |
 | `opnsense_wg_client` | `serverport` | `serverport` | int | numeric only | Remote WireGuard peer port |
