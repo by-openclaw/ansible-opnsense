@@ -154,6 +154,11 @@ ansible-opnsense/
 | `opnsense_radvd_service` | Start / stop / reconfigure radvd |
 | `opnsense_dnsmasq_settings` | Manage Dnsmasq global settings (keep it off / strictly bound next to Kea + Unbound) |
 | `opnsense_dnsmasq_service` | Start / stop / reconfigure Dnsmasq |
+| `opnsense_ids_settings` | Manage Suricata IDS/IPS general settings (mode, interfaces, HOME_NET, EVE → syslog) |
+| `opnsense_ids_ruleset` | Enable / disable IDS rulesets by filename or prefix (ET Open, abuse.ch, …) |
+| `opnsense_ids_service` | Start / stop / reconfigure Suricata; `rules_updated` fetches the enabled rulesets |
+| `opnsense_mdnsrepeater_settings` | Manage the mDNS repeater (os-mdns-repeater) settings |
+| `opnsense_mdnsrepeater_service` | Start / stop / reconfigure the mDNS repeater |
 
 ### DHCP / Kea (5 modules)
 

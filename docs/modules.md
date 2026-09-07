@@ -740,6 +740,61 @@ Control Dnsmasq (default `stopped` — free 67/547 for Kea).
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | stopped | `running`, `stopped` or `reconfigured` |
 
+### opnsense_ids_settings
+
+Manage the Suricata `general` block (singleton). `mode: pcap` = IDS (alert only); `netmap`/`divert` = inline IPS. A seeded FW stores `interfaces=wan` (not a valid slot on our seeds) — set `interfaces` here BEFORE toggling rulesets or every IDS save fails validation.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable Suricata |
+| `mode` | str | no | -- | `pcap`, `netmap`, `divert` |
+| `interfaces` | list[str] | no | -- | Interface slot ids |
+| `homenet` | list[str] | no | -- | HOME_NET networks |
+| `syslog / syslog_eve` | bool | no | -- | Alerts / EVE JSON to syslog (Loki path) |
+| `eve_log` | list[str] | no | -- | `http`, `tls` (API `eveLog`) |
+| `log_payload / promisc / divert_listeners` | bool | no | -- |  |
+| `alert_logrotate / alert_save_logs / mpm_algo / verbosity / default_packet_size` | str | no | -- | Advanced (API CamelCase fields) |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_ids_ruleset
+
+Enable/disable rulesets from the device catalogue (68 on 26.7.3: 48 ET Open `emerging-*.rules`, abuse.ch ×5, OPNsense app-detect). Only drifted sets are toggled; fetch the rules with `opnsense_ids_service: rules_updated`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `rulesets` | dict | no | -- | filename → enabled |
+| `enable_prefix` | list[str] | no | -- | Enable every ruleset starting with a prefix (`emerging-` = all ET Open) |
+| `disable_others` | bool | no | false | Disable every ruleset not covered above |
+| `apply` | bool | no | true | Reconfigure after toggling |
+
+### opnsense_ids_service
+
+Control Suricata; `rules_updated` runs `updateRules` (long-running, always changed).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped`, `reconfigured`, `rules_updated` |
+
+### opnsense_mdnsrepeater_settings
+
+Manage the os-mdns-repeater settings (singleton). Needs at least two interfaces.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable |
+| `interfaces` | list[str] | no | -- | Interface slot ids (>= 2) |
+| `blocklist` | list[str] | no | -- | Networks to drop |
+| `enablecarp` | bool | no | -- | Follow CARP |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_mdnsrepeater_service
+
+Control the mDNS repeater.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_ub_diagnostics
 
 Query Unbound DNS resolver diagnostics (read-only, no `state` param).
