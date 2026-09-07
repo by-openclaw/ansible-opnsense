@@ -14,3 +14,4 @@ htmlcov/
 coverage.xml
 *.tar.gz
 tests/integration/logs/
+.ansible/

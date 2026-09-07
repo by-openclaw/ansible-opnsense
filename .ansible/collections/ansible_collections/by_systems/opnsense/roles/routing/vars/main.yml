@@ -1,6 +1,0 @@
----
-# Internal role variables — not intended to be overridden.
-# All user-facing variables are in defaults/main.yml.
-
-_routing_role_version: "0.1.0"
-_routing_min_opnsense_version: "26.1"

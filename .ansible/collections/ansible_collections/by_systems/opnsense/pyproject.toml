@@ -1,7 +1,0 @@
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = [
-    "integration: requires live OPNsense device",
-]
-addopts = "-v --tb=short"
