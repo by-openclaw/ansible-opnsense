@@ -115,7 +115,10 @@ try:
         opn_argument_spec,
     )
 except ImportError:
-    from plugins.module_utils.opnsense_helper import _handle_opnsense_error, opn_argument_spec
+    from plugins.module_utils.opnsense_helper import (
+        _handle_opnsense_error,
+        opn_argument_spec,
+    )
 
 
 async def _run(module: AnsibleModule) -> dict:

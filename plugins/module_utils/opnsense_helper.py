@@ -34,6 +34,7 @@ async def run_ensure(
     module: AnsibleModule,
     manager_factory: Callable,
     params: dict[str, Any],
+    ensure_kwargs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute an ensure() call with proper try/except/finally.
 
@@ -102,16 +103,19 @@ async def run_ensure(
         import inspect
 
         ensure_params = inspect.signature(mgr.ensure).parameters
+        extra = dict(ensure_kwargs or {})
         if "params" in ensure_params:
             result = await mgr.ensure(
                 state=module.params["state"],
                 params=params,
                 check_mode=module.check_mode,
+                **extra,
             )
         else:
             result = await mgr.ensure(
                 state=module.params["state"],
                 check_mode=module.check_mode,
+                **extra,
             )
 
         diff: dict[str, Any] = {}
@@ -214,6 +218,7 @@ def run_module(
     module: AnsibleModule,
     manager_factory: Callable,
     params: dict[str, Any],
+    ensure_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Synchronous entry point — wraps run_ensure() in asyncio.run().
 
@@ -222,5 +227,5 @@ def run_module(
         manager_factory: Callable that takes an OpnsenseClient and returns a manager.
         params:          Parameters to pass to manager.ensure().
     """
-    result = asyncio.run(run_ensure(module, manager_factory, params))
+    result = asyncio.run(run_ensure(module, manager_factory, params, ensure_kwargs))
     module.exit_json(**result)

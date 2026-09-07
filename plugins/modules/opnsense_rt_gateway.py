@@ -49,9 +49,8 @@ options:
     type: str
     required: true
   gateway:
-    description: Gateway IP address.
+    description: Gateway IP address. Omit for DYNAMIC gateways (PPPoE/DHCP/DHCP6-PD) — they are matched by I(name).
     type: str
-    required: true
   ipprotocol:
     description: IP protocol version.
     type: str
@@ -60,11 +59,9 @@ options:
   disabled:
     description: Disable this gateway.
     type: bool
-    default: false
   defaultgw:
     description: Mark as default gateway.
     type: bool
-    default: false
   priority:
     description: Gateway priority (0-255).
     type: int
@@ -74,11 +71,9 @@ options:
   fargw:
     description: Far gateway (non-local gateway).
     type: bool
-    default: false
   monitor_disable:
     description: Disable gateway monitoring.
     type: bool
-    default: false
   monitor:
     description: Monitor IP address.
     type: str
@@ -152,18 +147,18 @@ def main() -> None:
         {
             "name": {"type": "str", "required": True},
             "interface": {"type": "str", "required": True},
-            "gateway": {"type": "str", "required": True},
+            "gateway": {"type": "str"},
             "ipprotocol": {
                 "type": "str",
                 "choices": ["inet", "inet6"],
                 "default": "inet",
             },
-            "disabled": {"type": "bool", "default": False},
-            "defaultgw": {"type": "bool", "default": False},
+            "disabled": {"type": "bool"},
+            "defaultgw": {"type": "bool"},
             "priority": {"type": "int"},
             "weight": {"type": "int"},
-            "fargw": {"type": "bool", "default": False},
-            "monitor_disable": {"type": "bool", "default": False},
+            "fargw": {"type": "bool"},
+            "monitor_disable": {"type": "bool"},
             "monitor": {"type": "str", "default": ""},
             "state": {
                 "type": "str",
@@ -178,13 +173,16 @@ def main() -> None:
     params: dict = {
         "name": module.params["name"],
         "interface": module.params["interface"],
-        "gateway": module.params["gateway"],
         "ipprotocol": module.params["ipprotocol"],
-        "disabled": "1" if module.params["disabled"] else "0",
-        "defaultgw": "1" if module.params["defaultgw"] else "0",
-        "fargw": "1" if module.params["fargw"] else "0",
-        "monitor_disable": "1" if module.params["monitor_disable"] else "0",
     }
+    # gateway is optional: DYNAMIC gateways (PPPoE / DHCP / DHCP6-PD) have no static
+    # address and are matched by name (e.g. to pin their monitor).
+    if module.params["gateway"]:
+        params["gateway"] = module.params["gateway"]
+    # Booleans only when set, so an existing gateway keeps its other flags.
+    for flag in ("disabled", "defaultgw", "fargw", "monitor_disable"):
+        if module.params[flag] is not None:
+            params[flag] = "1" if module.params[flag] else "0"
     if module.params["priority"] is not None:
         params["priority"] = str(module.params["priority"])
     if module.params["weight"] is not None:
