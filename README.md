@@ -147,6 +147,13 @@ ansible-opnsense/
 | `opnsense_monit_alert` | CRUD Monit alert recipients |
 | `opnsense_monit_test` | CRUD Monit tests (conditions) |
 | `opnsense_monit_service` | CRUD Monit monitored services (checks) |
+| `opnsense_kea4_settings` | Manage Kea DHCPv4 general settings (enable, interfaces, lifetimes) |
+| `opnsense_kea6_settings` | Manage Kea DHCPv6 general settings |
+| `opnsense_kea_service` | Start / stop / reconfigure the Kea DHCP service |
+| `opnsense_radvd_entry` | CRUD radvd per-interface router-advertisement entries |
+| `opnsense_radvd_service` | Start / stop / reconfigure radvd |
+| `opnsense_dnsmasq_settings` | Manage Dnsmasq global settings (keep it off / strictly bound next to Kea + Unbound) |
+| `opnsense_dnsmasq_service` | Start / stop / reconfigure Dnsmasq |
 
 ### DHCP / Kea (5 modules)
 

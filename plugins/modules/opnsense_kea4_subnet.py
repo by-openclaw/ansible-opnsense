@@ -58,6 +58,12 @@ options:
     description: Subnet description.
     type: str
     default: ""
+  option_data:
+    description: DHCP options for the subnet (routers, domain_name_servers, domain_search, domain_name, ntp_servers, time_servers, static_routes, classless_static_route, tftp_server_name, boot_file_name). Diffed sub-key by sub-key.
+    type: dict
+  match_client_id:
+    description: Match clients by client-id (API field C(match-client-id)).
+    type: bool
   state:
     description: Desired state of the subnet.
     type: str
@@ -128,6 +134,8 @@ def main() -> None:
             "pools": {"type": "str", "default": ""},
             "next_server": {"type": "str", "default": ""},
             "description": {"type": "str", "default": ""},
+            "option_data": {"type": "dict"},
+            "match_client_id": {"type": "bool"},
             "state": {
                 "type": "str",
                 "choices": ["present", "absent"],
@@ -148,6 +156,12 @@ def main() -> None:
     if module.params["description"]:
         params["description"] = module.params["description"]
 
+    if module.params.get("option_data") is not None:
+        params["option_data"] = {
+            k: str(v) for k, v in module.params["option_data"].items()
+        }
+    if module.params.get("match_client_id") is not None:
+        params["match-client-id"] = "1" if module.params["match_client_id"] else "0"
     from opnsense.managers.dhcp.kea4_subnet import Kea4SubnetManager
 
     run_module(module, Kea4SubnetManager, params)

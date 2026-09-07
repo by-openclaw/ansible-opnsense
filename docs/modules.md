@@ -658,6 +658,88 @@ CRUD Monit monitored services / checks (matched by `name`). `tests` / `depends` 
 | `start / stop` | str | no | -- | Commands |
 | `state` | str | no | present | `present` or `absent` |
 
+### opnsense_kea4_settings
+
+Manage the Kea DHCPv4 `general` block (singleton — only the options you set are sent). A freshly seeded FW ships Kea disabled.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable the DHCPv4 daemon |
+| `interfaces` | list[str] | no | -- | Interface slot ids to listen on |
+| `valid_lifetime` | str | no | -- | Lease lifetime (s) |
+| `fwrules` | bool | no | -- | Plugin-managed pass rules |
+| `manual_config` | bool | no | -- | Hand-written kea config |
+| `dhcp_socket_type` | str | no | -- | `raw` or `udp` |
+| `compatibility` | list[str] | no | -- | Compatibility flags |
+| `decline_probation_period / service_sockets_*` | str | no | -- | Advanced timers |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_kea6_settings
+
+Manage the Kea DHCPv6 `general` block. Kea v6 emits no router advertisements — pair with `opnsense_radvd_entry`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable the DHCPv6 daemon |
+| `interfaces` | list[str] | no | -- | Interface slot ids |
+| `valid_lifetime` | str | no | -- | Lease lifetime (s) |
+| `fwrules / manual_config` | bool | no | -- |  |
+| `mac_sources` | list[str] | no | -- | MAC sources (default `ipv6-link-local`) |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_kea_service
+
+Control the Kea DHCP service (v4 + v6 share one controller); `disabled` while both families are off.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
+### opnsense_radvd_entry
+
+CRUD radvd entries (matched by `interface`).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `interface` | str | yes | -- | Interface slot id (match key) |
+| `enabled` | bool | no | -- | Enable |
+| `mode` | str | no | -- | router, unmanaged, managed, assist, stateless |
+| `base6_interface` | str | no | -- | Track this interface's prefix (API `Base6Interface`) |
+| `deprecate_prefix / remove_adv_on_exit / remove_route` | str | no | -- | `on`/`off`/empty |
+| `state` | str | no | present | `present` or `absent` |
+
+### opnsense_radvd_service
+
+Control radvd.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
+### opnsense_dnsmasq_settings
+
+Manage the Dnsmasq global settings singleton. Keep it off or strictly bound while Kea holds 67/547 and Unbound owns :53.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enable` | bool | no | -- | Master switch |
+| `strictbind` | bool | no | -- | Bind only listed interfaces |
+| `interface` | list[str] | no | -- | Interface slot ids |
+| `listen_port` | str | no | -- | Port (API `port`) |
+| `dns_port` | str | no | -- | DNS port |
+| `dhcp` | list[str] | no | -- | DHCP interface slot ids |
+| `regdhcp / regdhcpstatic / dhcpfirst / strict_order / domain_needed / no_private_reverse / no_resolv / log_queries / no_hosts / dnssec / add_subnet / strip_subnet / no_ident` | bool | no | -- | Toggles |
+| `regdhcpdomain / dns_forward_max / cache_size / local_ttl / add_mac` | str | no | -- |  |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_dnsmasq_service
+
+Control Dnsmasq (default `stopped` — free 67/547 for Kea).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | stopped | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_ub_diagnostics
 
 Query Unbound DNS resolver diagnostics (read-only, no `state` param).
@@ -682,6 +764,8 @@ Manage Kea DHCPv4 subnets.
 | `pools` | str | no | "" | Address pool ranges |
 | `next_server` | str | no | "" | TFTP / PXE next-server |
 | `description` | str | no | "" | Subnet description |
+| `option_data` | dict | no | -- | DHCP options (routers, domain_name_servers, domain_search, domain_name, ntp_servers, time_servers, static_routes, classless_static_route, tftp_server_name, boot_file_name) — diffed sub-key by sub-key |
+| `match_client_id` | bool | no | -- | API `match-client-id` |
 | `state` | str | no | present | `present` or `absent` |
 
 ### opnsense_kea4_reservation
