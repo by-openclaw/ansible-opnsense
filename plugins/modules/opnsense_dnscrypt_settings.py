@@ -16,7 +16,9 @@ description:
   - Manage the general settings of the os-dnscrypt-proxy plugin — the encrypted upstream of the Unbound chain.
   - Thin wrapper around lib-opnsense DnscryptProxyGeneralManager.ensure().
   - >
-    I(serverlist) / I(disabled_serverlist) / I(relaylist) names are validated against the public-resolvers list the daemon downloads after its FIRST start: enable the service first, then select servers.
+    I(serverlist) / I(disabled_serverlist) / I(relaylist) are free-form CSV lists of server NAMES from
+    the public-resolvers list the daemon downloads; the API does not validate them against that list,
+    so the whole configuration converges in one call (unknown names are ignored by the daemon).
   - Only the options you set are diffed and sent — everything else is left untouched.
   - Requires OPNsense >= 26.1 and the os-dnscrypt-proxy plugin.
 options:
@@ -50,7 +52,7 @@ options:
     type: list
     elements: str
   serverlist:
-    description: Upstream server names from the public-resolvers list.
+    description: Upstream server names from the public-resolvers list (free-form; not validated by the API).
     type: list
     elements: str
   disabled_serverlist:
