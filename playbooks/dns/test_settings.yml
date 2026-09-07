@@ -1,0 +1,99 @@
+---
+# test_settings.yml — Unbound general settings + service module E2E
+#
+# What it tests (never mutates the live resolver config):
+#   ub_settings: idempotent noop on the OPNsense default local_zone_type
+#   ub_settings: check_mode reports a change without applying it
+#   ub_service:  reconfigured always applies; ensure-to-current state noops
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/dns/test_settings.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+- name: "DNS (Unbound) settings + service"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+  tasks:
+    # ── Settings: idempotency on a value every firewall shares ─────────
+    - name: "Settings — OPNsense default local_zone_type is a noop"
+      by_systems.opnsense.opnsense_ub_settings:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        local_zone_type: transparent
+      register: ub_noop
+
+    - name: "Assert — settings noop"
+      ansible.builtin.assert:
+        that:
+          - ub_noop.changed == false
+          - ub_noop.action == 'noop'
+
+    # ── Settings: check_mode previews without touching the device ──────
+    - name: "Settings — check_mode: a different local_zone_type would change"
+      by_systems.opnsense.opnsense_ub_settings:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        local_zone_type: static
+      check_mode: true
+      register: ub_check
+
+    - name: "Assert — check_mode reported the change"
+      ansible.builtin.assert:
+        that:
+          - ub_check.changed == true
+          - ub_check.action == 'updated'
+
+    - name: "Settings — still transparent after check_mode (nothing applied)"
+      by_systems.opnsense.opnsense_ub_settings:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        local_zone_type: transparent
+      register: ub_after
+
+    - name: "Assert — check_mode did not apply"
+      ansible.builtin.assert:
+        that:
+          - ub_after.changed == false
+
+    # ── Service ────────────────────────────────────────────────────────
+    - name: "Service — reconfigure (always applies)"
+      by_systems.opnsense.opnsense_ub_service:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        state: reconfigured
+      register: ub_reconf
+
+    - name: "Assert — reconfigured"
+      ansible.builtin.assert:
+        that:
+          - ub_reconf.action == 'reconfigured'
+
+    - name: "Service — ensure the CURRENT state (running or stopped) is a noop"
+      by_systems.opnsense.opnsense_ub_service:
+        host: "{{ opn_host }}"
+        key: "{{ opn_key }}"
+        secret: "{{ opn_secret }}"
+        port: "{{ opn_port }}"
+        verify_ssl: "{{ opn_verify_ssl }}"
+        state: "{{ ub_expected_state | default('stopped') }}"
+      register: ub_state
+
+    - name: "Assert — service state noop"
+      ansible.builtin.assert:
+        that:
+          - ub_state.changed == false
+          - ub_state.action == 'noop'

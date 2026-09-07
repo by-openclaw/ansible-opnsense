@@ -128,6 +128,8 @@ ansible-opnsense/
 | `opnsense_ub_acl` | CRUD DNS access control lists |
 | `opnsense_ub_dot` | CRUD DNS-over-TLS upstream servers |
 | `opnsense_ub_diagnostics` | Query Unbound resolver diagnostics (read-only) |
+| `opnsense_ub_settings` | Manage Unbound general settings (enable the resolver, port, interfaces, DNSSEC, …) |
+| `opnsense_ub_service` | Start / stop / reconfigure the Unbound service |
 
 ### DHCP / Kea (5 modules)
 

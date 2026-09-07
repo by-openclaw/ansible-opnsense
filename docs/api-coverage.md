@@ -69,7 +69,7 @@
 | Routing | `opnsense_rt_gateway` | `RtGatewayManager` | `name` | 26.1 | `DONE` |
 | Routing | `opnsense_rt_route` | `RtRouteManager` | `network, gateway` | 26.1 | `DONE` |
 
-## DNS / Unbound (6 modules -- requires reconfigure)
+## DNS / Unbound (8 modules -- requires reconfigure)
 
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
 |---|---|---|---|---|---|
@@ -79,6 +79,8 @@
 | DNS | `opnsense_ub_acl` | `UbAclManager` | `name` | 26.1 | `DONE` |
 | DNS | `opnsense_ub_dot` | `UbDotManager` | `server, port` | 26.1 | `DONE` |
 | DNS | `opnsense_ub_diagnostics` | `UbDiagnosticsManager` | -- | 26.1 | `DONE` |
+| DNS | `opnsense_ub_settings` | `UbSettingsManager` | -- (singleton `general` block) | 26.1 | `DONE` |
+| DNS | `opnsense_ub_service` | `UbServiceManager` | -- (service) | 26.1 | `DONE` |
 
 ## DHCP / Kea (5 modules -- requires reconfigure)
 
