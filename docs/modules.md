@@ -407,6 +407,41 @@ Manage Unbound DNS-over-TLS upstream servers.
 | `description` | str | no | "" | Server description |
 | `state` | str | no | present | `present` or `absent` |
 
+### opnsense_ub_settings
+
+Manage the Unbound resolver's `general` settings (singleton — only the options you set are diffed and sent). A freshly installed or seeded firewall ships with the resolver **disabled**; this module turns it on.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable the resolver |
+| `listen_port` | str | no | -- | Listening port (maps to API field `port`; `port` is the API connection port) |
+| `active_interface` | list[str] | no | -- | Interface slot ids to listen on (empty list = all) |
+| `outgoing_interface` | list[str] | no | -- | Interface slot ids for upstream queries (empty list = all) |
+| `stats` | bool | no | -- | Collect statistics |
+| `dnssec` | bool | no | -- | DNSSEC validation |
+| `dns64` | bool | no | -- | DNS64 synthesis |
+| `dns64prefix` | str | no | -- | DNS64 prefix |
+| `noarecords` | bool | no | -- | Do not return A records |
+| `regdhcp` | bool | no | -- | Register DHCP leases |
+| `regdhcpdomain` | str | no | -- | Domain for registered DHCP names |
+| `regdhcpstatic` | bool | no | -- | Register static DHCP mappings |
+| `noreglladdr6` | bool | no | -- | Skip IPv6 link-local registration |
+| `noregrecords` | bool | no | -- | Skip system A/AAAA registration |
+| `txtsupport` | bool | no | -- | TXT records for DHCP descriptions |
+| `cacheflush` | bool | no | -- | Flush cache on reload |
+| `safesearch` | bool | no | -- | Force SafeSearch |
+| `enable_wpad` | bool | no | -- | Serve WPAD records |
+| `local_zone_type` | str | no | -- | `always_nxdomain`, `always_refuse`, `always_transparent`, `deny`, `inform`, `inform_deny`, `nodefault`, `refuse`, `static`, `transparent`, `typetransparent` |
+| `state` | str | no | present | Only `present` (singleton) |
+
+### opnsense_ub_service
+
+Control the Unbound service. Reports `disabled` while the resolver is off in its settings — enable it with `opnsense_ub_settings` first. `reconfigured` always applies (never idempotent by design).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_ub_diagnostics
 
 Query Unbound DNS resolver diagnostics (read-only, no `state` param).
