@@ -92,6 +92,23 @@ options:
     description: Log matching packets.
     type: bool
     default: false
+  quick:
+    description: >
+      Apply the action immediately on match ("quick"). OPNsense defaults to true;
+      set false for last-match semantics (e.g. floating/policy rules).
+    type: bool
+  sequence:
+    description: Rule sequence (evaluation order, >= 1). Omit to let OPNsense append.
+    type: int
+  source_not:
+    description: Negate the source match (source is NOT source_net).
+    type: bool
+  destination_not:
+    description: Negate the destination match (destination is NOT destination_net).
+    type: bool
+  gateway:
+    description: Policy-route matching traffic through this gateway (name), e.g. WAN_TELENET_GW.
+    type: str
   state:
     description: Desired state of the rule.
     type: str
@@ -199,6 +216,12 @@ def main() -> None:
             "destination_port": {"type": "str", "default": ""},
             "enabled": {"type": "bool", "default": True},
             "log": {"type": "bool", "default": False},
+            # Optional (None = leave OPNsense's default / existing value untouched).
+            "quick": {"type": "bool"},
+            "sequence": {"type": "int"},
+            "source_not": {"type": "bool"},
+            "destination_not": {"type": "bool"},
+            "gateway": {"type": "str"},
             "state": {
                 "type": "str",
                 "choices": ["present", "absent"],
@@ -225,6 +248,15 @@ def main() -> None:
         params["source_port"] = module.params["source_port"]
     if module.params["destination_port"]:
         params["destination_port"] = module.params["destination_port"]
+    # Optional fields: only passed when set, so an omitted value never rewrites
+    # what the firewall already has (lib validators: bool_str / int / str).
+    for flag in ("quick", "source_not", "destination_not"):
+        if module.params[flag] is not None:
+            params[flag] = "1" if module.params[flag] else "0"
+    if module.params["sequence"] is not None:
+        params["sequence"] = int(module.params["sequence"])
+    if module.params["gateway"]:
+        params["gateway"] = module.params["gateway"]
 
     from opnsense.managers.firewall.filter import FwFilterManager
 
