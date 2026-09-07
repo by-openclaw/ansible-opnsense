@@ -93,6 +93,10 @@ options:
   divert_listeners:
     description: Divert listeners.
     type: bool
+  detect_profile:
+    description: Detection-engine profile (nested API block C(detect.Profile)); empty = OPNsense default.
+    type: str
+    choices: ["", low, medium, high, custom]
   state:
     description: Only C(present) is supported (singleton settings).
     type: str
@@ -186,6 +190,14 @@ def main() -> None:
     )
     spec.update({f: {"type": "list", "elements": "str"} for f in _LIST_FIELDS})
     spec.update(
+        {
+            "detect_profile": {
+                "type": "str",
+                "choices": ["", "low", "medium", "high", "custom"],
+            }
+        }
+    )
+    spec.update(
         {"state": {"type": "str", "choices": ["present"], "default": "present"}}
     )
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
@@ -200,6 +212,9 @@ def main() -> None:
     for field in _LIST_FIELDS:
         if module.params.get(field) is not None:
             params[_API_NAMES.get(field, field)] = list(module.params[field])
+
+    if module.params.get("detect_profile") is not None:
+        params["detect"] = {"Profile": module.params["detect_profile"]}
 
     from opnsense.managers.ids.settings import IdsSettingsManager
 
