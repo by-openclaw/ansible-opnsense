@@ -515,7 +515,7 @@ dnscrypt-proxy (os-dnscrypt-proxy) general settings (singleton — only the opti
 |-----------|------|----------|---------|-------------|
 | `enabled` | bool | no | -- | Enable dnscrypt-proxy. |
 | `listen_addresses` | list[str] | no | -- | Listen addresses (e.g. 127.0.0.1:53531, [::1]:53531). |
-| `serverlist` | list[str] | no | -- | Upstream server names from the public-resolvers list. |
+| `serverlist` | list[str] | no | -- | Upstream server names from the public-resolvers list (free-form CSV on the API — not validated against the downloaded list). |
 | `disabled_serverlist` | list[str] | no | -- | Server names to exclude. |
 | `relaylist` | list[str] | no | -- | Anonymized DNS relays. |
 | `ipv4_servers` | bool | no | -- | Use IPv4 upstream servers. |
