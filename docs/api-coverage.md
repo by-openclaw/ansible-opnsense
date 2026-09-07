@@ -40,7 +40,7 @@
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
 |---|---|---|---|---|---|
 | Firewall | `opnsense_fw_alias` | `FwAliasManager` | `name` | 26.1 | `DONE` |
-| Firewall | `opnsense_fw_filter` | `FwFilterManager` | `description, interface, direction, protocol` | 26.1 | `DONE` |
+| Firewall | `opnsense_fw_filter` | `FwFilterManager` | `description, interface, direction, protocol` (+ optional `quick`, `sequence`, `source_not`, `destination_not`, `gateway` — omitted = untouched) | 26.1 | `DONE` |
 | Firewall | `opnsense_fw_dnat` | `FwDnatManager` | `descr, interface, target` (+ source/destination net·port·not, sequence, natreflection, nordr, local_port) | 26.1 | `DONE` |
 | Firewall | `opnsense_fw_source_nat` | `FwSourceNatManager` | `description, interface, source_net` | 26.1 | `DONE` |
 | Firewall | `opnsense_fw_one_to_one` | `FwOneToOneManager` | `description, interface, source_net` | 26.1 | `DONE` |
