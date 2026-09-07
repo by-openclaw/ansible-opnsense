@@ -109,11 +109,23 @@
 | Monit | `opnsense_monit_test` | `MonitTestManager` | `name` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_service` | `MonitServiceManager` | `name` | 26.1 | `DONE` |
 
+## DHCP settings / radvd / dnsmasq (7 modules)
+
+| Scope | Module | Manager | Match Keys | Min OPNsense | Status |
+|---|---|---|---|---|---|
+| DHCP | `opnsense_kea4_settings` | `Kea4SettingsManager` | -- (singleton `general`) | 26.1 | `DONE` |
+| DHCP | `opnsense_kea6_settings` | `Kea6SettingsManager` | -- (singleton `general`) | 26.1 | `DONE` |
+| DHCP | `opnsense_kea_service` | `KeaServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_radvd_entry` | `RadvdEntryManager` | `interface` | 26.1 | `DONE` |
+| Services | `opnsense_radvd_service` | `RadvdServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_dnsmasq_settings` | `DnsmasqSettingsManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_dnsmasq_service` | `DnsmasqServiceManager` | -- (service) | 26.1 | `DONE` |
+
 ## DHCP / Kea (5 modules -- requires reconfigure)
 
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
 |---|---|---|---|---|---|
-| DHCP | `opnsense_kea4_subnet` | `Kea4SubnetManager` | `subnet` | 26.1 | `DONE` |
+| DHCP | `opnsense_kea4_subnet` | `Kea4SubnetManager` | `subnet` | 26.1 | `DONE` (`option_data` dict + `match_client_id`; nested options diffed since lib #104) |
 | DHCP | `opnsense_kea4_reservation` | `Kea4ReservationManager` | `ip_address, hw_address` | 26.1 | `DONE` |
 | DHCP | `opnsense_kea4_peer` | `Kea4PeerManager` | `name` | 26.1 | `DONE` |
 | DHCP | `opnsense_kea6_subnet` | `Kea6SubnetManager` | `subnet` | 26.1 | `DONE` |

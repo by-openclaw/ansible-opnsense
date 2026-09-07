@@ -1,0 +1,193 @@
+---
+# test_settings.yml — Kea settings/service, radvd entry/service, dnsmasq settings/service + kea4_subnet option_data E2E
+#
+# What it tests (never enables/disables a daemon on the device):
+#   kea4/kea6_settings: noop on the current valid_lifetime; check_mode enable preview
+#   kea_service / radvd_service / dnsmasq_service: current state noop (check_mode)
+#   dnsmasq_settings: check_mode preview
+#   radvd_entry: inttest entry on a spare interface create → noop → delete
+#   kea4_subnet: inttest subnet WITH option_data create → noop (nested diff, lib #85) → option change = updated → delete
+#
+# Inputs: opn_host, opn_key, opn_secret (+ radvd_if: spare interface slot, default opt14)
+- name: "DHCP (Kea) settings, radvd, dnsmasq"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    radvd_if: opt14
+    conn:
+      host: "{{ opn_host }}"
+      key: "{{ opn_key }}"
+      secret: "{{ opn_secret }}"
+      port: "{{ opn_port }}"
+      verify_ssl: "{{ opn_verify_ssl }}"
+  tasks:
+    - name: "Kea4 settings — current valid_lifetime is a noop"
+      by_systems.opnsense.opnsense_kea4_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        valid_lifetime: "4000"
+      register: r_k4
+    - name: "Kea4 settings — check_mode enable on two slots"
+      by_systems.opnsense.opnsense_kea4_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        enabled: true
+        interfaces: [opt2, opt3]
+      check_mode: true
+      register: r_k4_cm
+    - name: "Kea6 settings — current valid_lifetime is a noop"
+      by_systems.opnsense.opnsense_kea6_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        valid_lifetime: "4000"
+      register: r_k6
+    - name: "Kea service — check_mode running preview"
+      by_systems.opnsense.opnsense_kea_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: running
+      check_mode: true
+      register: r_ksvc
+    - name: "Dnsmasq settings — check_mode preview"
+      by_systems.opnsense.opnsense_dnsmasq_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        log_queries: true
+      check_mode: true
+      register: r_dm
+    - name: "Dnsmasq service — check_mode stopped preview"
+      by_systems.opnsense.opnsense_dnsmasq_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: stopped
+      check_mode: true
+      register: r_dmsvc
+    - name: "Radvd service — check_mode running preview"
+      by_systems.opnsense.opnsense_radvd_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: running
+      check_mode: true
+      register: r_rsvc
+    - name: "Radvd entry — create inttest (disabled)"
+      by_systems.opnsense.opnsense_radvd_entry:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        interface: "{{ radvd_if }}"
+        mode: unmanaged
+        enabled: false
+      register: r_re1
+    - name: "Radvd entry — idempotent"
+      by_systems.opnsense.opnsense_radvd_entry:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        interface: "{{ radvd_if }}"
+        mode: unmanaged
+        enabled: false
+      register: r_re2
+    - name: "Radvd entry — delete inttest"
+      by_systems.opnsense.opnsense_radvd_entry:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        interface: "{{ radvd_if }}"
+        state: absent
+      register: r_re3
+    - name: "Kea4 subnet — create inttest with option_data"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        subnet: 10.99.5.0/24
+        pools: 10.99.5.50-10.99.5.99
+        description: inttest-e2e option_data
+        option_data:
+          routers: 10.99.5.1
+          domain_name_servers: 10.99.5.1
+          domain_name: inttest.test
+      register: r_ks1
+    - name: "Kea4 subnet — same option_data is a noop (nested diff)"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        subnet: 10.99.5.0/24
+        pools: 10.99.5.50-10.99.5.99
+        option_data:
+          routers: 10.99.5.1
+          domain_name_servers: 10.99.5.1
+          domain_name: inttest.test
+      register: r_ks2
+    - name: "Kea4 subnet — adding ntp_servers is an update"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        subnet: 10.99.5.0/24
+        option_data:
+          routers: 10.99.5.1
+          ntp_servers: 10.99.5.1
+      register: r_ks3
+    - name: "Kea4 subnet — delete inttest"
+      by_systems.opnsense.opnsense_kea4_subnet:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        subnet: 10.99.5.0/24
+        state: absent
+      register: r_ks4
+    - name: "Report — actions"
+      ansible.builtin.debug:
+        msg:
+          kea4_settings: "{{ r_k4.action }} cm={{ r_k4_cm.action }}/{{ r_k4_cm.changed }}"
+          kea6_settings: "{{ r_k6.action }}"
+          services: "kea={{ r_ksvc.action }} dnsmasq={{ r_dmsvc.action }} radvd={{ r_rsvc.action }} dnsmasq_settings_cm={{ r_dm.action }}"
+          radvd_entry: "{{ r_re1.action }} → {{ r_re2.action }} → {{ r_re3.action }}"
+          kea4_subnet: "{{ r_ks1.action }} → {{ r_ks2.action }} → {{ r_ks3.action }} → {{ r_ks4.action }}"
+    - name: "Assert"
+      ansible.builtin.assert:
+        that:
+          - r_k4.action == 'noop' and r_k6.action == 'noop'
+          - r_k4_cm.changed
+          - r_re1.action == 'created' and r_re2.action == 'noop' and r_re3.action == 'deleted'
+          - r_ks1.action == 'created' and r_ks2.action == 'noop' and r_ks3.action == 'updated' and r_ks4.action == 'deleted'
