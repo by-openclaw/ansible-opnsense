@@ -1,0 +1,113 @@
+---
+# test_settings.yml — IDS (Suricata) settings/ruleset/service + mDNS repeater modules E2E
+#
+# What it tests (never enables the IDS, never downloads rules, never starts a daemon):
+#   ids_settings:  noop on the current enabled flag; check_mode enable preview
+#   ids_ruleset:   check_mode preview (list + planned toggles only)
+#   ids_service:   status noop for the current state; rules_updated in check_mode
+#   mdnsrepeater:  settings noop; service check_mode
+#
+# Inputs: opn_host, opn_key, opn_secret
+- name: "IDS + mDNS repeater modules"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    conn:
+      host: "{{ opn_host }}"
+      key: "{{ opn_key }}"
+      secret: "{{ opn_secret }}"
+      port: "{{ opn_port }}"
+      verify_ssl: "{{ opn_verify_ssl }}"
+  tasks:
+    - name: "IDS settings — check_mode enable preview"
+      by_systems.opnsense.opnsense_ids_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        enabled: true
+        mode: pcap
+        interfaces: [opt13]
+        homenet: ["10.11.0.0/16", "fd11::/32"]
+      check_mode: true
+      register: r_ids_cm
+    - name: "IDS settings — mode pcap is a noop (device default)"
+      by_systems.opnsense.opnsense_ids_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        mode: pcap
+      register: r_ids
+    - name: "IDS rulesets — check_mode: ET Open + abuse.ch SSL"
+      by_systems.opnsense.opnsense_ids_ruleset:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        enable_prefix: [emerging-]
+        rulesets:
+          abuse.ch.sslblacklist.rules: true
+          abuse.ch.sslipblacklist.rules: true
+      check_mode: true
+      register: r_rs_cm
+    - name: "IDS service — check_mode rules_updated"
+      by_systems.opnsense.opnsense_ids_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: rules_updated
+      check_mode: true
+      register: r_svc_cm
+    - name: "IDS service — stopped is a noop while disabled"
+      by_systems.opnsense.opnsense_ids_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: stopped
+      register: r_svc
+    - name: "MDNS repeater settings — enablecarp false is a noop"
+      by_systems.opnsense.opnsense_mdnsrepeater_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        enablecarp: false
+      register: r_mdns
+    - name: "MDNS repeater service — check_mode running preview"
+      by_systems.opnsense.opnsense_mdnsrepeater_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: running
+      check_mode: true
+      register: r_mdns_svc
+    - name: "Report"
+      ansible.builtin.debug:
+        msg:
+          ids_settings: "{{ r_ids.action }} cm={{ r_ids_cm.action }}/{{ r_ids_cm.changed }}"
+          ids_ruleset_cm: "{{ r_rs_cm.action }}/{{ r_rs_cm.changed }}"
+          ids_service: "{{ r_svc.action }} rules_cm={{ r_svc_cm.action }}"
+          mdns: "{{ r_mdns.action }} svc_cm={{ r_mdns_svc.action }}"
+    - name: "Assert"
+      ansible.builtin.assert:
+        that:
+          - r_ids.action == 'noop'
+          - r_ids_cm.changed
+          - r_rs_cm.changed and r_rs_cm.action == 'updated'
+          - r_svc_cm.action == 'rules_updated'
+          - r_svc.action == 'noop'
+          - r_mdns.action == 'noop'

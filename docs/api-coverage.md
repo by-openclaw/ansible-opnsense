@@ -121,6 +121,16 @@
 | Services | `opnsense_dnsmasq_settings` | `DnsmasqSettingsManager` | -- (singleton) | 26.1 | `DONE` |
 | Services | `opnsense_dnsmasq_service` | `DnsmasqServiceManager` | -- (service) | 26.1 | `DONE` |
 
+## Intrusion detection (Suricata) + mDNS repeater (5 modules)
+
+| Scope | Module | Manager | Match Keys | Min OPNsense | Status |
+|---|---|---|---|---|---|
+| IDS | `opnsense_ids_settings` | `IdsSettingsManager` | -- (singleton `general`) | 26.1 | `DONE` |
+| IDS | `opnsense_ids_ruleset` | `IdsRulesetManager` | `filename` | 26.1 | `DONE` |
+| IDS | `opnsense_ids_service` | `IdsServiceManager` | -- (service + updateRules) | 26.1 | `DONE` |
+| Services | `opnsense_mdnsrepeater_settings` | `MdnsRepeaterSettingsManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_mdnsrepeater_service` | `MdnsRepeaterServiceManager` | -- (service) | 26.1 | `DONE` |
+
 ## DHCP / Kea (5 modules -- requires reconfigure)
 
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
