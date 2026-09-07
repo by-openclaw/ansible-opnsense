@@ -554,6 +554,110 @@ Control the dnscrypt-proxy service (`os-dnscrypt-proxy`). Reports `disabled` whi
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | running | `running`, `stopped` or `reconfigured` |
 
+### opnsense_plugin
+
+Install or remove an `os-*` plugin through the firmware job API and wait for it. The backend reports `done` even for a REFUSED job (fresh 26.7.0 image: "Installation out of date…", unknown package) — the verdict is read from the job log and surfaced as a failure.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Plugin package name |
+| `wait` | bool | no | true | Wait for the job and verify |
+| `timeout` | int | no | 300 | Job timeout (s) |
+| `state` | str | no | present | `present` or `absent` |
+
+### opnsense_firmware
+
+Run the firmware check and apply the pending point update (`updated`) or major upgrade (`upgraded`) only when the device reports one; the device reboots. With `target` set, waits until `product_version` contains it. In check mode nothing is fired and `diff.before` carries the resolved status. A deliberate per-environment window, never part of a routine converge.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `target` | str | no | -- | Version substring to wait for after the reboot |
+| `check_timeout` | int | no | 120 | Check job timeout (s) |
+| `wait_timeout` | int | no | 1500 | Reboot wait timeout (s) |
+| `state` | str | no | updated | `updated` or `upgraded` |
+
+### opnsense_core_service
+
+Start / stop / restart a daemon registered in `core/service/search` (legacy daemons without an MVC controller, e.g. `ntpd`). Unknown daemon = stopped.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Service id |
+| `state` | str | no | running | `running`, `stopped` or `restarted` |
+
+### opnsense_ddns_service
+
+Control the Dynamic DNS (os-ddclient) service; `restarted` publishes the active WAN address immediately.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | reconfigured | `running`, `stopped`, `restarted` or `reconfigured` |
+
+### opnsense_netflow_service
+
+Reconfigure the NetFlow / Insight exporter (the exporter configuration itself is seed-owned).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | reconfigured | `reconfigured` (only meaningful state) |
+
+### opnsense_monit_settings
+
+Manage the Monit `general` block (singleton — only the options you set are sent).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable Monit |
+| `interval / startdelay` | str | no | -- | Poll interval / start delay (s) |
+| `mailserver / smtp_port / username / password / ssl / sslversion / sslverify` | str/bool | no | -- | SMTP alert transport (`smtp_port` → API `port`; `password` no_log) |
+| `httpd_enabled / httpd_port / httpd_username / httpd_password / httpd_allow` | bool/str | no | -- | Monit HTTP interface |
+| `mmonit_url / mmonit_timeout / mmonit_register_credentials` | str/bool | no | -- | M/Monit |
+| `logfile / statefile / eventqueue_path / eventqueue_slots` | str | no | -- | Files / event queue |
+| `state` | str | no | present | Only `present` |
+
+### opnsense_monit_alert
+
+CRUD Monit alert recipients (matched by `recipient`).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `recipient` | str | yes | -- | Recipient e-mail (match key) |
+| `enabled` | bool | no | -- | Enable |
+| `noton` | bool | no | -- | Invert the event selection |
+| `events` | str | no | -- | Comma-separated events (empty = all) |
+| `format` | str | no | -- | Custom mail format |
+| `reminder` | str | no | -- | Reminder cycles |
+| `description` | str | no | -- | Description |
+| `state` | str | no | present | `present` or `absent` |
+
+### opnsense_monit_test
+
+CRUD Monit tests (matched by `name`). OPNsense coerces `type` to `Custom` when `condition` is not one of the type's fixed expressions (`Existence` expects `not exist`) — use `Custom` for free-form conditions such as `does not exist`, or the second run reports a change.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Test name (match key) |
+| `type` | str | no | -- | Existence, SystemResource, ProcessResource, … (see module doc) |
+| `condition` | str | no | -- | Condition expression |
+| `action` | str | no | -- | alert, restart, start, stop, exec, unmonitor |
+| `path` | str | no | -- | Path for exec |
+| `state` | str | no | present | `present` or `absent` |
+
+### opnsense_monit_service
+
+CRUD Monit monitored services / checks (matched by `name`). `tests` / `depends` are comma-separated UUIDs.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Service name (match key) |
+| `type` | str | no | -- | process, file, fifo, filesystem, directory, host, system, custom, network |
+| `enabled / description` | bool/str | no | -- |  |
+| `pidfile / match / path / address / interface` | str | no | -- | Type-specific target |
+| `timeout / starttimeout / polltime` | str | no | -- | Timings |
+| `tests / depends` | str | no | -- | Comma-separated UUIDs |
+| `start / stop` | str | no | -- | Commands |
+| `state` | str | no | present | `present` or `absent` |
+
 ### opnsense_ub_diagnostics
 
 Query Unbound DNS resolver diagnostics (read-only, no `state` param).

@@ -1,0 +1,222 @@
+---
+# test_block3.yml — firmware / plugin / core-service / ddns / netflow / monit / dynamic-gateway modules E2E
+#
+# What it tests (never installs/removes a plugin, never fires an update, never touches real monit config):
+#   plugin:          installed plugin present = noop; check_mode absent = preview
+#   firmware:        check_mode reports the resolved status without firing
+#   core_service:    ntpd stopped = noop (chrony owns :123); unknown daemon stopped = noop
+#   ddns/netflow:    reconfigured
+#   monit_*:         inttest- objects create → noop → delete; settings check_mode only
+#   rt_gateway:      the DYNAMIC Proximus DHCP6 gateway pinned to its current monitor = noop
+#
+# Inputs: opn_host, opn_key, opn_secret (+ optional gw_name/gw_if/gw_monitor for another device)
+- name: "Block 3 modules — firmware/plugin/core-service/ddns/netflow/monit/dynamic gateway"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    conn:
+      host: "{{ opn_host }}"
+      key: "{{ opn_key }}"
+      secret: "{{ opn_secret }}"
+      port: "{{ opn_port }}"
+      verify_ssl: "{{ opn_verify_ssl }}"
+    gw_name: WAN_PROXIMUS_DHCP6
+    gw_if: opt12
+    gw_monitor: "2001:4860:4860::8888"
+  tasks:
+    - name: "Plugin — os-chrony present is a noop"
+      by_systems.opnsense.opnsense_plugin:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: os-chrony
+      register: r_plugin
+    - name: "Plugin — check_mode removal is only a preview"
+      by_systems.opnsense.opnsense_plugin:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: os-chrony
+        state: absent
+      check_mode: true
+      register: r_plugin_cm
+    - name: "Firmware — check_mode reports pending status"
+      by_systems.opnsense.opnsense_firmware:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+      check_mode: true
+      register: r_fw
+    - name: "Core service — ntpd stopped is a noop"
+      by_systems.opnsense.opnsense_core_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: ntpd
+        state: stopped
+      register: r_core
+    - name: "DDNS service — reconfigure"
+      by_systems.opnsense.opnsense_ddns_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_ddns
+    - name: "NetFlow — reconfigure"
+      by_systems.opnsense.opnsense_netflow_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+      register: r_netflow
+    - name: "Monit settings — check_mode only"
+      by_systems.opnsense.opnsense_monit_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        interval: "120"
+      check_mode: true
+      register: r_monit_set
+    - name: "Monit test — create inttest"
+      by_systems.opnsense.opnsense_monit_test:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: inttest-e2e-test
+        type: Custom
+        condition: does not exist
+        action: alert
+      register: r_mt1
+    - name: "Monit test — idempotent"
+      by_systems.opnsense.opnsense_monit_test:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: inttest-e2e-test
+        type: Custom
+        condition: does not exist
+        action: alert
+      register: r_mt2
+    - name: "Monit service — create inttest (disabled)"
+      by_systems.opnsense.opnsense_monit_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: inttest-e2e-svc
+        type: process
+        pidfile: /var/run/inttest-e2e.pid
+        enabled: false
+      register: r_ms1
+    - name: "Monit alert — create inttest"
+      by_systems.opnsense.opnsense_monit_alert:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        recipient: inttest-e2e@example.test
+        enabled: false
+      register: r_ma1
+    - name: "Monit alert — idempotent"
+      by_systems.opnsense.opnsense_monit_alert:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        recipient: inttest-e2e@example.test
+        enabled: false
+      register: r_ma2
+    - name: "Gateway — DYNAMIC gateway pinned to its current monitor is a noop"
+      by_systems.opnsense.opnsense_rt_gateway:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: "{{ gw_name }}"
+        interface: "{{ gw_if }}"
+        ipprotocol: inet6
+        monitor: "{{ gw_monitor }}"
+      register: r_gw
+    - name: "Cleanup — remove inttest monit alert"
+      by_systems.opnsense.opnsense_monit_alert:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        recipient: inttest-e2e@example.test
+        state: absent
+      register: r_cl_alert
+    - name: "Cleanup — remove inttest monit service"
+      by_systems.opnsense.opnsense_monit_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: inttest-e2e-svc
+        state: absent
+      register: r_cl_svc
+    - name: "Cleanup — remove inttest monit test"
+      by_systems.opnsense.opnsense_monit_test:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        name: inttest-e2e-test
+        state: absent
+      register: r_cl_test
+    - name: "Report — actions per module"
+      ansible.builtin.debug:
+        msg:
+          plugin: "{{ r_plugin.action }}/{{ r_plugin.changed }} cm={{ r_plugin_cm.action }}"
+          firmware: "{{ r_fw.action }} before={{ r_fw.diff.before | default({}) }}"
+          core_service: "{{ r_core.action }}/{{ r_core.changed }}"
+          ddns: "{{ r_ddns.action }}"
+          netflow: "{{ r_netflow.action }}"
+          monit_settings: "{{ r_monit_set.action }}"
+          monit_test: "{{ r_mt1.action }} then {{ r_mt2.action }}"
+          monit_service: "{{ r_ms1.action }}"
+          monit_alert: "{{ r_ma1.action }} then {{ r_ma2.action }}"
+          gateway: "{{ r_gw.action }}/{{ r_gw.changed }} diff={{ r_gw.diff | default({}) }}"
+          cleanup: "{{ r_cl_alert.action }} {{ r_cl_svc.action }} {{ r_cl_test.action }}"
+    - name: "Assert — block 3 behaviours"
+      ansible.builtin.assert:
+        that:
+          - not r_plugin.changed and r_plugin.action == 'noop'
+          - r_plugin_cm.changed and r_plugin_cm.action == 'removed'
+          - r_fw.diff.before.product_version is defined and r_fw.action in ['noop', 'updated']
+          - not r_core.changed and r_core.action == 'noop'
+          - r_ddns.action == 'reconfigured'
+          - r_netflow.action == 'reconfigured'
+          - r_monit_set.action in ['noop', 'updated']
+          - r_mt1.action == 'created' and not r_mt2.changed
+          - r_ms1.action == 'created'
+          - r_ma1.action == 'created' and not r_ma2.changed
+          - not r_gw.changed and r_gw.action == 'noop'
+          - r_cl_alert.action == 'deleted' and r_cl_svc.action == 'deleted' and r_cl_test.action == 'deleted'

@@ -66,7 +66,7 @@
 
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
 |---|---|---|---|---|---|
-| Routing | `opnsense_rt_gateway` | `RtGatewayManager` | `name` | 26.1 | `DONE` |
+| Routing | `opnsense_rt_gateway` | `RtGatewayManager` | `name` | 26.1 | `DONE` (`gateway` optional — dynamic PPPoE/DHCP gateways matched by name) |
 | Routing | `opnsense_rt_route` | `RtRouteManager` | `network, gateway` | 26.1 | `DONE` |
 
 ## DNS / Unbound (8 modules -- requires reconfigure)
@@ -94,6 +94,20 @@
 | Services | `opnsense_qemuguestagent_service` | `QemuGuestAgentServiceManager` | -- (service) | 26.1 | `DONE` |
 | Services | `opnsense_dnscrypt_settings` | `DnscryptProxyGeneralManager` | -- (singleton) | 26.1 | `DONE` |
 | Services | `opnsense_dnscrypt_service` | `DnscryptProxyServiceManager` | -- (service) | 26.1 | `DONE` |
+
+## Firmware / plugins / core services / Monit (9 modules)
+
+| Scope | Module | Manager | Match Keys | Min OPNsense | Status |
+|---|---|---|---|---|---|
+| Core | `opnsense_plugin` | `PluginManager.ensure` | `name` | 26.1 | `DONE` |
+| Core | `opnsense_firmware` | `FirmwareManager` | -- (job) | 26.1 | `DONE` |
+| Core | `opnsense_core_service` | `CoreServiceManager` | `name` | 26.1 | `DONE` |
+| Services | `opnsense_ddns_service` | `DdnsServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_netflow_service` | `NetflowServiceManager` | -- (service) | 26.1 | `DONE` |
+| Monit | `opnsense_monit_settings` | `MonitSettingsManager` | -- (singleton `general`) | 26.1 | `DONE` |
+| Monit | `opnsense_monit_alert` | `MonitAlertManager` | `recipient` | 26.1 | `DONE` |
+| Monit | `opnsense_monit_test` | `MonitTestManager` | `name` | 26.1 | `DONE` |
+| Monit | `opnsense_monit_service` | `MonitServiceManager` | `name` | 26.1 | `DONE` |
 
 ## DHCP / Kea (5 modules -- requires reconfigure)
 

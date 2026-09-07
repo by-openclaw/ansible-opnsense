@@ -138,6 +138,15 @@ ansible-opnsense/
 | `opnsense_qemuguestagent_service` | Start / stop / reconfigure the QEMU guest agent service |
 | `opnsense_dnscrypt_settings` | Manage dnscrypt-proxy (os-dnscrypt-proxy) general settings |
 | `opnsense_dnscrypt_service` | Start / stop / reconfigure the dnscrypt-proxy service |
+| `opnsense_plugin` | Install / remove an OPNsense plugin and wait for the firmware job (refusals surfaced) |
+| `opnsense_firmware` | Apply pending firmware updates/upgrades (reboots) and wait for the target version; check_mode reports what is pending |
+| `opnsense_core_service` | Start / stop / restart a registered daemon by name (core/service — legacy daemons such as ntpd) |
+| `opnsense_ddns_service` | Start / stop / restart / reconfigure the Dynamic DNS (os-ddclient) service |
+| `opnsense_netflow_service` | Reconfigure the NetFlow / Insight exporter |
+| `opnsense_monit_settings` | Manage Monit general settings (SMTP alerting, HTTP interface, M/Monit) |
+| `opnsense_monit_alert` | CRUD Monit alert recipients |
+| `opnsense_monit_test` | CRUD Monit tests (conditions) |
+| `opnsense_monit_service` | CRUD Monit monitored services (checks) |
 
 ### DHCP / Kea (5 modules)
 
