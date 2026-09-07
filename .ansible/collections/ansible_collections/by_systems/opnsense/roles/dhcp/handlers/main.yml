@@ -1,3 +1,0 @@
----
-# Kea DHCP changes may require service reconfigure.
-# This file is kept for role compliance. Future: add reconfigure handler.
