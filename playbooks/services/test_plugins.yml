@@ -1,0 +1,156 @@
+---
+# test_plugins.yml — plugin settings + service modules E2E (chrony, lldpd, qemu-guest-agent, dnscrypt-proxy)
+#
+# What it tests (never mutates the live plugin config):
+#   *_settings: idempotent noop on a field whose default every firewall shares
+#   *_settings: check_mode reports a change without applying it
+#   *_service:  reconfigured always applies
+#
+# Inputs: opn_host, opn_key, opn_secret
+# Run: ansible-playbook playbooks/services/test_plugins.yml -e opn_host=... -e opn_key=... -e opn_secret=... -v
+- name: "Plugin settings + services (chrony, lldpd, qemu-guest-agent, dnscrypt-proxy)"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    opn_port: 443
+    opn_verify_ssl: false
+    conn:
+      host: "{{ opn_host }}"
+      key: "{{ opn_key }}"
+      secret: "{{ opn_secret }}"
+      port: "{{ opn_port }}"
+      verify_ssl: "{{ opn_verify_ssl }}"
+  tasks:
+    # ── chrony ─────────────────────────────────────────────────────────
+    - name: "Chrony — nts_client false is a noop (plugin default)"
+      by_systems.opnsense.opnsense_chrony_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        nts_client: false
+      register: r_chrony
+    - name: "Chrony — check_mode: nts_client true would change"
+      by_systems.opnsense.opnsense_chrony_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        nts_client: true
+      check_mode: true
+      register: r_chrony_cm
+    - name: "Chrony — reconfigure"
+      by_systems.opnsense.opnsense_chrony_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_chrony_svc
+    # ── lldpd ──────────────────────────────────────────────────────────
+    - name: "Lldpd — cdp false is a noop (plugin default)"
+      by_systems.opnsense.opnsense_lldpd_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        cdp: false
+      register: r_lldpd
+    - name: "Lldpd — check_mode: cdp true would change"
+      by_systems.opnsense.opnsense_lldpd_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        cdp: true
+      check_mode: true
+      register: r_lldpd_cm
+    - name: "Lldpd — reconfigure"
+      by_systems.opnsense.opnsense_lldpd_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_lldpd_svc
+    # ── qemu-guest-agent ───────────────────────────────────────────────
+    - name: "QEMU guest agent — log_debug false is a noop (plugin default)"
+      by_systems.opnsense.opnsense_qemuguestagent_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        log_debug: false
+      register: r_qemu
+    - name: "QEMU guest agent — check_mode: log_debug true would change"
+      by_systems.opnsense.opnsense_qemuguestagent_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        log_debug: true
+      check_mode: true
+      register: r_qemu_cm
+    - name: "QEMU guest agent — reconfigure"
+      by_systems.opnsense.opnsense_qemuguestagent_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_qemu_svc
+    # ── dnscrypt-proxy ─────────────────────────────────────────────────
+    - name: "Dnscrypt-proxy — force_tcp false is a noop (plugin default)"
+      by_systems.opnsense.opnsense_dnscrypt_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        force_tcp: false
+      register: r_dnscrypt
+    - name: "Dnscrypt-proxy — check_mode: force_tcp true would change"
+      by_systems.opnsense.opnsense_dnscrypt_settings:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        force_tcp: true
+      check_mode: true
+      register: r_dnscrypt_cm
+    - name: "Dnscrypt-proxy — reconfigure"
+      by_systems.opnsense.opnsense_dnscrypt_service:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_dnscrypt_svc
+    # ── Assertions ─────────────────────────────────────────────────────
+    - name: "Assert — noops, check_mode previews, reconfigures"
+      ansible.builtin.assert:
+        that:
+          - not r_chrony.changed and r_chrony.action == 'noop'
+          - r_chrony_cm.changed and r_chrony_cm.action == 'updated'
+          - r_chrony_svc.action == 'reconfigured'
+          - not r_lldpd.changed and r_lldpd.action == 'noop'
+          - r_lldpd_cm.changed and r_lldpd_cm.action == 'updated'
+          - r_lldpd_svc.action == 'reconfigured'
+          - not r_qemu.changed and r_qemu.action == 'noop'
+          - r_qemu_cm.changed and r_qemu_cm.action == 'updated'
+          - r_qemu_svc.action == 'reconfigured'
+          - not r_dnscrypt.changed and r_dnscrypt.action == 'noop'
+          - r_dnscrypt_cm.changed and r_dnscrypt_cm.action == 'updated'
+          - r_dnscrypt_svc.action == 'reconfigured'

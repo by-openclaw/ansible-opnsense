@@ -82,6 +82,19 @@
 | DNS | `opnsense_ub_settings` | `UbSettingsManager` | -- (singleton `general` block) | 26.1 | `DONE` |
 | DNS | `opnsense_ub_service` | `UbServiceManager` | -- (service) | 26.1 | `DONE` |
 
+## Plugin settings + services (8 modules -- chrony, lldpd, qemu-guest-agent, dnscrypt-proxy)
+
+| Scope | Module | Manager | Match Keys | Min OPNsense | Status |
+|---|---|---|---|---|---|
+| Services | `opnsense_chrony_settings` | `ChronyGeneralManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_chrony_service` | `ChronyServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_lldpd_settings` | `LldpdGeneralManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_lldpd_service` | `LldpdServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_qemuguestagent_settings` | `QemuGuestAgentSettingsManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_qemuguestagent_service` | `QemuGuestAgentServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_dnscrypt_settings` | `DnscryptProxyGeneralManager` | -- (singleton) | 26.1 | `DONE` |
+| Services | `opnsense_dnscrypt_service` | `DnscryptProxyServiceManager` | -- (service) | 26.1 | `DONE` |
+
 ## DHCP / Kea (5 modules -- requires reconfigure)
 
 | Scope | Module | Manager | Match Keys | Min OPNsense | Status |
