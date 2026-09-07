@@ -442,6 +442,118 @@ Control the Unbound service. Reports `disabled` while the resolver is off in its
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | running | `running`, `stopped` or `reconfigured` |
 
+### opnsense_chrony_settings
+
+Chrony NTP (os-chrony) general settings (singleton — only the options you set are diffed and sent). Requires `os-chrony`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable chronyd. |
+| `ntp_port` | str | no | -- | NTP port (API field C(port); 123 to serve clients). (API field `port`) |
+| `nts_client` | bool | no | -- | Use NTS for upstream peers. (API field `ntsclient`) |
+| `nts_nocert` | bool | no | -- | Skip NTS certificate validation. (API field `ntsnocert`) |
+| `peers` | list[str] | no | -- | Upstream NTP peers (pool hostnames). |
+| `fallback_peers` | str | no | -- | Fallback peers (CSV). (API field `fallbackpeers`) |
+| `allowed_networks` | list[str] | no | -- | Networks chronyd serves NTP to (empty = client-only). (API field `allowednetworks`) |
+| `state` | str | no | present | Only `present` (singleton) |
+
+### opnsense_chrony_service
+
+Control the Chrony NTP service (`os-chrony`). Reports `disabled` while switched off in its settings; `reconfigured` always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
+### opnsense_lldpd_settings
+
+LLDP daemon (os-lldpd) general settings (singleton — only the options you set are diffed and sent). Requires `os-lldpd`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable lldpd. |
+| `cdp` | bool | no | -- | Also speak CDP (Cisco). |
+| `fdp` | bool | no | -- | Also speak FDP (Foundry). |
+| `edp` | bool | no | -- | Also speak EDP (Extreme). |
+| `sonmp` | bool | no | -- | Also speak SONMP (Nortel). |
+| `agentx` | bool | no | -- | Expose an SNMP AgentX sub-agent. |
+| `interfaces` | list[str] | no | -- | Interface slot ids to announce on (API field C(interface), CSV). (API field `interface`) |
+| `state` | str | no | present | Only `present` (singleton) |
+
+### opnsense_lldpd_service
+
+Control the LLDP daemon service (`os-lldpd`). Reports `disabled` while switched off in its settings; `reconfigured` always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
+### opnsense_qemuguestagent_settings
+
+QEMU guest agent (os-qemu-guest-agent) settings (singleton — only the options you set are diffed and sent). Requires `os-qemu-guest-agent`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable the guest agent. (API field `Enabled`) |
+| `log_debug` | bool | no | -- | Debug logging. (API field `LogDebug`) |
+| `disabled_rpcs` | list[str] | no | -- | guest-* RPC names to block (e.g. guest-exec). (API field `DisabledRPCs`) |
+| `state` | str | no | present | Only `present` (singleton) |
+
+### opnsense_qemuguestagent_service
+
+Control the QEMU guest agent service (`os-qemu-guest-agent`). Reports `disabled` while switched off in its settings; `reconfigured` always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
+### opnsense_dnscrypt_settings
+
+dnscrypt-proxy (os-dnscrypt-proxy) general settings (singleton — only the options you set are diffed and sent). Requires `os-dnscrypt-proxy`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Enable dnscrypt-proxy. |
+| `listen_addresses` | list[str] | no | -- | Listen addresses (e.g. 127.0.0.1:53531, [::1]:53531). |
+| `serverlist` | list[str] | no | -- | Upstream server names from the public-resolvers list. |
+| `disabled_serverlist` | list[str] | no | -- | Server names to exclude. |
+| `relaylist` | list[str] | no | -- | Anonymized DNS relays. |
+| `ipv4_servers` | bool | no | -- | Use IPv4 upstream servers. |
+| `ipv6_servers` | bool | no | -- | Use IPv6 upstream servers. |
+| `dnscrypt_servers` | bool | no | -- | Use DNSCrypt servers. |
+| `doh_servers` | bool | no | -- | Use DoH servers. |
+| `odoh_servers` | bool | no | -- | Use ODoH servers. |
+| `require_dnssec` | bool | no | -- | Only DNSSEC-validating servers. |
+| `require_nolog` | bool | no | -- | Only no-log servers. |
+| `require_nofilter` | bool | no | -- | Only non-filtering servers. |
+| `force_tcp` | bool | no | -- | Force TCP upstream. |
+| `cache` | bool | no | -- | Enable the local cache. |
+| `cache_size` | str | no | -- | Cache size (entries). |
+| `cache_min_ttl` | str | no | -- | Cache min TTL. |
+| `cache_max_ttl` | str | no | -- | Cache max TTL. |
+| `cache_neg_min_ttl` | str | no | -- | Negative cache min TTL. |
+| `cache_neg_max_ttl` | str | no | -- | Negative cache max TTL. |
+| `fallback_resolver` | str | no | -- | Bootstrap resolver (ip:port). |
+| `timeout` | str | no | -- | Query timeout (ms). |
+| `keepalive` | str | no | -- | Keepalive (s). |
+| `cert_refresh_delay` | str | no | -- | Certificate refresh delay (min). |
+| `query_logs` | bool | no | -- | Log every query (audit). |
+| `block_ipv6` | bool | no | -- | Block AAAA answers. |
+| `allow_privileged` | bool | no | -- | Allow binding privileged ports. (API field `allowprivileged`) |
+| `max_clients` | str | no | -- | Max concurrent clients. |
+| `dnscrypt_ephemeral_keys` | bool | no | -- | Ephemeral DNSCrypt keys. |
+| `tls_disable_session_tickets` | bool | no | -- | Disable TLS session tickets. |
+| `proxy` | str | no | -- | SOCKS proxy URL. |
+| `state` | str | no | present | Only `present` (singleton) |
+
+### opnsense_dnscrypt_service
+
+Control the dnscrypt-proxy service (`os-dnscrypt-proxy`). Reports `disabled` while switched off in its settings; `reconfigured` always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_ub_diagnostics
 
 Query Unbound DNS resolver diagnostics (read-only, no `state` param).

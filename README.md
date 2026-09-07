@@ -130,6 +130,14 @@ ansible-opnsense/
 | `opnsense_ub_diagnostics` | Query Unbound resolver diagnostics (read-only) |
 | `opnsense_ub_settings` | Manage Unbound general settings (enable the resolver, port, interfaces, DNSSEC, …) |
 | `opnsense_ub_service` | Start / stop / reconfigure the Unbound service |
+| `opnsense_chrony_settings` | Manage Chrony NTP (os-chrony) general settings |
+| `opnsense_chrony_service` | Start / stop / reconfigure the Chrony NTP service |
+| `opnsense_lldpd_settings` | Manage LLDP daemon (os-lldpd) general settings |
+| `opnsense_lldpd_service` | Start / stop / reconfigure the LLDP daemon service |
+| `opnsense_qemuguestagent_settings` | Manage QEMU guest agent (os-qemu-guest-agent) settings |
+| `opnsense_qemuguestagent_service` | Start / stop / reconfigure the QEMU guest agent service |
+| `opnsense_dnscrypt_settings` | Manage dnscrypt-proxy (os-dnscrypt-proxy) general settings |
+| `opnsense_dnscrypt_service` | Start / stop / reconfigure the dnscrypt-proxy service |
 
 ### DHCP / Kea (5 modules)
 
