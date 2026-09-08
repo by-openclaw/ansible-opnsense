@@ -109,6 +109,12 @@
 | Monit | `opnsense_monit_test` | `MonitTestManager` | `name` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_service` | `MonitServiceManager` | `name` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_daemon` | `MonitDaemonManager` | -- (daemon state) | 26.1 | `DONE` |
+| ACME | `opnsense_acme_settings` | `AcmeSettingsManager` | -- (singleton `settings`) | 26.1 | `DONE` |
+| ACME | `opnsense_acme_account` | `AcmeAccountManager` | `name` (+ `registered`) | 26.1 | `DONE` |
+| ACME | `opnsense_acme_validation` | `AcmeValidationManager` | `name` | 26.1 | `DONE` |
+| ACME | `opnsense_acme_action` | `AcmeActionManager` | `name` | 26.1 | `DONE` |
+| ACME | `opnsense_acme_certificate` | `AcmeCertificateManager` | `name` (+ `issued`/`renew`) | 26.1 | `DONE` |
+| ACME | `opnsense_acme_service` | `AcmeServiceManager` | -- (service state) | 26.1 | `DONE` |
 
 ## DHCP settings / radvd / dnsmasq (7 modules)
 

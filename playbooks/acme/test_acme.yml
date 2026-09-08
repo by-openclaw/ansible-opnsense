@@ -1,0 +1,81 @@
+---
+# test_acme.yml — os-acme-client modules E2E (settings / account / validation / action / certificate / service)
+#
+# What it tests (never issues a certificate, never touches the real ACME objects):
+#   settings:     check_mode only (report what would change)
+#   account:      inttest- account against letsencrypt_test create → noop → `registered` in check_mode → delete
+#   validation:   inttest- DNS-01 (dns_cf, dummy token) create → noop → delete
+#   action:       inttest- configd_restart_gui create → noop → delete
+#   certificate:  inttest- object referencing the inttest account/validation create → noop →
+#                 `issued` in check_mode (would_issued, no CA contact) → delete
+#   service:      status / running in check_mode / reconfigured
+# Inputs: opn_host, opn_key, opn_secret
+- name: "ACME modules — os-acme-client E2E (no issuance)"
+  hosts: localhost
+  gather_facts: false
+  become: false
+  connection: local
+  vars:
+    conn: {host: "{{ opn_host }}", key: "{{ opn_key }}", secret: "{{ opn_secret }}", port: "{{ opn_port | default(443) }}", verify_ssl: false}
+  tasks:
+    - name: "Settings — check_mode only"
+      by_systems.opnsense.opnsense_acme_settings: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, log_level: normal}
+      check_mode: true
+      register: r_set
+    - name: "Account — create inttest"
+      by_systems.opnsense.opnsense_acme_account: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-acct, email: inttest@example.com, ca: letsencrypt_test, description: inttest}
+      register: r_acct1
+    - name: "Account — idempotent"
+      by_systems.opnsense.opnsense_acme_account: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-acct, email: inttest@example.com, ca: letsencrypt_test, description: inttest}
+      register: r_acct2
+    - name: "Account — registered (check_mode: would_register, no CA contact)"
+      by_systems.opnsense.opnsense_acme_account: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-acct, ca: letsencrypt_test, state: registered}
+      check_mode: true
+      register: r_acct3
+    - name: "Validation — create inttest (DNS-01 Cloudflare, dummy token)"
+      by_systems.opnsense.opnsense_acme_validation: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-val, method: dns01, dns_service: dns_cf, dns_cf_token: inttest-dummy-token, description: inttest}  # pragma: allowlist secret
+      register: r_val1
+    - name: "Validation — idempotent"
+      by_systems.opnsense.opnsense_acme_validation: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-val, method: dns01, dns_service: dns_cf, dns_cf_token: inttest-dummy-token, description: inttest}  # pragma: allowlist secret
+      register: r_val2
+    - name: "Action — create inttest"
+      by_systems.opnsense.opnsense_acme_action: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-action, type: configd_restart_gui, description: inttest}
+      register: r_act1
+    - name: "Action — idempotent"
+      by_systems.opnsense.opnsense_acme_action: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-action, type: configd_restart_gui, description: inttest}
+      register: r_act2
+    - name: "Certificate — create inttest object (no issuance)"
+      by_systems.opnsense.opnsense_acme_certificate: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e.example.com, account: "{{ r_acct1.uuid }}", validation_method: "{{ r_val1.uuid }}", restart_actions: "{{ r_act1.uuid }}", key_length: key_ec256, auto_renewal: false, description: inttest}
+      register: r_cert1
+    - name: "Certificate — idempotent"
+      by_systems.opnsense.opnsense_acme_certificate: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e.example.com, account: "{{ r_acct1.uuid }}", validation_method: "{{ r_val1.uuid }}", restart_actions: "{{ r_act1.uuid }}", key_length: key_ec256, auto_renewal: false, description: inttest}
+      register: r_cert2
+    - name: "Certificate — issued in check_mode (would_issued, no CA contact)"
+      by_systems.opnsense.opnsense_acme_certificate: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e.example.com, state: issued}
+      check_mode: true
+      register: r_cert3
+    - name: "Service — running (check_mode) + reconfigured"
+      by_systems.opnsense.opnsense_acme_service: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, state: running}
+      check_mode: true
+      register: r_svc1
+    - by_systems.opnsense.opnsense_acme_service: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, state: reconfigured}
+      register: r_svc2
+    - name: "Cleanup — certificate, action, validation, account"
+      by_systems.opnsense.opnsense_acme_certificate: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e.example.com, state: absent}
+      register: r_cert4
+    - by_systems.opnsense.opnsense_acme_action: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-action, state: absent}
+    - by_systems.opnsense.opnsense_acme_validation: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-val, state: absent}
+    - by_systems.opnsense.opnsense_acme_account: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, name: inttest-e2e-acct, state: absent}
+    - ansible.builtin.assert:
+        that:
+          - r_acct1.changed and r_acct1.action == 'created'
+          - not r_acct2.changed
+          - r_acct3.action == 'would_register'
+          - r_val1.action == 'created' and not r_val2.changed
+          - r_act1.action == 'created' and not r_act2.changed
+          - r_cert1.action == 'created' and not r_cert2.changed
+          - r_cert3.action == 'would_issued'
+          - r_svc1.action in ['started', 'noop']
+          - r_svc2.action == 'reconfigured'
+          - r_cert4.action == 'deleted'
+        quiet: true

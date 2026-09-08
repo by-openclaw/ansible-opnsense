@@ -666,6 +666,85 @@ Control the Monit daemon (`os-monit`) — the process, not the monitored-service
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | running | `running`, `stopped` or `reconfigured` |
 
+### opnsense_acme_settings
+
+ACME client (`os-acme-client`) general settings (singleton — only the options you set are diffed and sent). The lib reconfigures the service after a change, which regenerates the acme.sh configuration and the renewal cron.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `enabled` | bool | no | -- | Master enable |
+| `auto_renewal` | bool | no | -- | Auto-renewal cron |
+| `environment` | str | no | -- | `""` (default), `prod`, `stg` |
+| `challenge_port` / `tls_challenge_port` | str | no | -- | Internal challenge ports |
+| `restart_timeout` | str | no | -- | Seconds to wait for restarts |
+| `haproxy_integration` | bool | no | -- | HAProxy integration |
+| `log_level` | str | no | -- | `normal`, `extended`, `debug`, `debug2`, `debug3` |
+| `show_intro` | bool | no | -- | GUI intro panel |
+
+### opnsense_acme_account
+
+ACME CA accounts (match key `name`). `state: registered` = present + register with the CA when the last status is not `200` (idempotent).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Match key |
+| `email` | str | no | -- | Contact e-mail |
+| `ca` | str | no | -- | `letsencrypt`, `letsencrypt_test`, `buypass`, `buypass_test`, `google`, `google_test`, `sslcom`, `zerossl`, `custom` |
+| `custom_ca` | str | no | -- | Directory URL for `custom` |
+| `eab_kid` / `eab_hmac` | str | no | -- | External Account Binding (no_log) |
+| `enabled` | bool | no | -- | Enable |
+| `state` | str | no | present | `present`, `absent`, `registered` |
+
+### opnsense_acme_validation
+
+ACME challenge methods (match key `name`). Cloudflare DNS-01: `method: dns01`, `dns_service: dns_cf`, `dns_cf_token` (scoped token), `dns_cf_account_id`, optional `dns_cf_zone_id`, `dns_sleep`.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Match key |
+| `method` | str | no | -- | `http01`, `dns01`, `tlsalpn01` |
+| `http_service`, `http_opn_autodiscovery`, `http_opn_interface`, `http_opn_ipaddresses` | | no | -- | HTTP-01 options |
+| `dns_service`, `dns_sleep`, `dns_cf_email`, `dns_cf_key`, `dns_cf_token`, `dns_cf_account_id`, `dns_cf_zone_id` | str | no | -- | DNS-01 options (secrets no_log) |
+| `enabled` | bool | no | -- | Enable |
+| `state` | str | no | present | `present`, `absent` |
+
+### opnsense_acme_action
+
+ACME post-issue automations (match key `name`). `type: configd_restart_gui` restarts the WebGUI after a certificate update; SFTP / remote-SSH upload types pass their target fields through.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Match key |
+| `type` | str | no | -- | `configd_restart_gui`, `configd_restart_haproxy`, `configd_generic`, `configd_upload_sftp`, `configd_remote_ssh`, … |
+| `enabled` | bool | no | -- | Enable |
+| `sftp_*` / `remote_ssh_*` / `configd_generic_command` | str | no | -- | Target fields per type |
+| `state` | str | no | present | `present`, `absent` |
+
+### opnsense_acme_certificate
+
+ACME certificates (match key `name` = primary domain). `account`, `validation_method`, `restart_actions` take UUIDs (read-only lookup first). `state: issued` = present + sign when no issued leaf exists yet (`certRefId` empty or last status not `200`) — an issued, unchanged certificate is a noop; `renew: true` signs again (explicit renewal, never idempotent). Signing talks to the CA and can take minutes (DNS-01 `dns_sleep`).
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `name` | str | yes | -- | Primary domain (match key) |
+| `alt_names` | str | no | -- | SANs, comma-separated |
+| `account` / `validation_method` / `restart_actions` | str | no | -- | UUID references |
+| `key_length` | str | no | -- | `key_2048`, `key_3072`, `key_4096`, `key_ec256`, `key_ec384` |
+| `ocsp` | bool | no | -- | OCSP Must-Staple |
+| `auto_renewal` / `renew_interval` | bool / str | no | -- | Renewal policy |
+| `aliasmode`, `domainalias`, `challengealias` | str | no | -- | Alias mode |
+| `enabled` | bool | no | -- | Enable |
+| `renew` | bool | no | false | With `issued`: sign again |
+| `state` | str | no | present | `present`, `absent`, `issued` |
+
+### opnsense_acme_service
+
+Control the ACME client service. `reconfigured` regenerates the acme.sh configuration and the renewal cron; it always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_kea4_settings
 
 Manage the Kea DHCPv4 `general` block (singleton — only the options you set are sent). A freshly seeded FW ships Kea disabled.
