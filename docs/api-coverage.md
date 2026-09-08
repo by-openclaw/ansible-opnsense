@@ -108,6 +108,7 @@
 | Monit | `opnsense_monit_alert` | `MonitAlertManager` | `recipient` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_test` | `MonitTestManager` | `name` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_service` | `MonitServiceManager` | `name` | 26.1 | `DONE` |
+| Monit | `opnsense_monit_daemon` | `MonitDaemonManager` | -- (daemon state) | 26.1 | `DONE` |
 
 ## DHCP settings / radvd / dnsmasq (7 modules)
 

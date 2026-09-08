@@ -6,7 +6,8 @@
 #   firmware:        check_mode reports the resolved status without firing
 #   core_service:    ntpd stopped = noop (chrony owns :123); unknown daemon stopped = noop
 #   ddns/netflow:    reconfigured
-#   monit_*:         inttest- objects create → noop → delete; settings check_mode only
+#   monit_*:         inttest- objects create → noop → delete; settings check_mode only;
+#                    monit_daemon: running in check_mode + reconfigured (never start/stop for real)
 #   rt_gateway:      the DYNAMIC Proximus DHCP6 gateway pinned to its current monitor = noop
 #
 # Inputs: opn_host, opn_key, opn_secret (+ optional gw_name/gw_if/gw_monitor for another device)
@@ -93,6 +94,30 @@
         interval: "120"
       check_mode: true
       register: r_monit_set
+    - name: "Monit daemon — running (check_mode: would-start or noop, never changes the box)"
+      by_systems.opnsense.opnsense_monit_daemon:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: running
+      check_mode: true
+      register: r_monit_daemon_chk
+    - name: "Monit daemon — reconfigured (regenerate + syntax test; fails loudly on a refused config)"
+      by_systems.opnsense.opnsense_monit_daemon:
+        host: "{{ conn.host }}"
+        key: "{{ conn.key }}"
+        secret: "{{ conn.secret }}"
+        port: "{{ conn.port }}"
+        verify_ssl: "{{ conn.verify_ssl }}"
+        state: reconfigured
+      register: r_monit_daemon_rc
+    - ansible.builtin.assert:
+        that:
+          - r_monit_daemon_chk.action in ['started', 'noop']
+          - r_monit_daemon_rc.action == 'reconfigured'
+        quiet: true
     - name: "Monit test — create inttest"
       by_systems.opnsense.opnsense_monit_test:
         host: "{{ conn.host }}"

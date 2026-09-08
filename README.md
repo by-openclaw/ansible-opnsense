@@ -147,6 +147,7 @@ ansible-opnsense/
 | `opnsense_monit_alert` | CRUD Monit alert recipients |
 | `opnsense_monit_test` | CRUD Monit tests (conditions) |
 | `opnsense_monit_service` | CRUD Monit monitored services (checks) |
+| `opnsense_monit_daemon` | Start / stop / reconfigure the Monit daemon itself (fails loudly on a refused config) |
 | `opnsense_kea4_settings` | Manage Kea DHCPv4 general settings (enable, interfaces, lifetimes) |
 | `opnsense_kea6_settings` | Manage Kea DHCPv6 general settings |
 | `opnsense_kea_service` | Start / stop / reconfigure the Kea DHCP service |
