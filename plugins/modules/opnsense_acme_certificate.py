@@ -19,6 +19,9 @@ description:
     last status not C(200)); an issued, unchanged certificate is a noop. I(renew=true) signs again
     (explicit renewal, never idempotent). Signing talks to the CA and can take minutes (DNS-01).
   - I(account), I(validation_method) and I(restart_actions) take the UUIDs of the referenced objects (look them up read-only first).
+  - >
+    The trust-store refid the issued leaf lands under (C(certRefId)) is read-only on the API:
+    binding the WebGUI to it is done in the seed (pre-set refid), not by this module.
   - Requires the C(os-acme-client) plugin.
 options:
   host:

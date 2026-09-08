@@ -14,7 +14,11 @@ short_description: Manage OPNsense ACME client general settings
 version_added: "0.6.0"
 description:
   - Singleton settings of C(os-acme-client) — lib-opnsense AcmeSettingsManager.ensure(). Only the options you set are diffed and sent.
-  - The lib applies C(acmeclient/service/reconfigure) after a change (regenerates acme.sh config + the renewal cron).
+  - The lib applies C(acmeclient/service/reconfigure) after a change (regenerates the acme.sh config).
+  - >
+    I(cron=true) also converges the auto-renewal cron job through the plugin's own
+    C(settings/fetchCronIntegration) — the ONLY way it creates that job; saving I(auto_renewal)
+    through the API alone leaves the firewall without renewals. Idempotent (C(no change) = noop).
 options:
   host:
     description: OPNsense hostname or IP address.
@@ -67,6 +71,10 @@ options:
   show_intro:
     description: Show the GUI intro panel.
     type: bool
+  cron:
+    description: Ensure the auto-renewal cron job exists (requires I(enabled) and I(auto_renewal)).
+    type: bool
+    default: false
   state:
     description: Always C(present).
     type: str
@@ -85,6 +93,7 @@ EXAMPLES = r"""
     enabled: true
     auto_renewal: true
     environment: prod
+    cron: true
 """
 
 RETURN = r"""
@@ -93,7 +102,7 @@ changed:
   type: bool
   returned: always
 action:
-  description: C(updated) or C(noop).
+  description: C(updated), C(cron_created) or C(noop).
   type: str
   returned: always
 diff:
@@ -135,6 +144,7 @@ def main() -> None:
         {f: {"type": "str", **({"choices": _ENUMS[f]} if f in _ENUMS else {})} for f in _STR_FIELDS}
     )
     spec.update({"state": {"type": "str", "choices": ["present"], "default": "present"}})
+    spec.update({"cron": {"type": "bool", "default": False}})
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
     params: dict = {}
@@ -147,7 +157,7 @@ def main() -> None:
 
     from opnsense.managers.acme.settings import AcmeSettingsManager
 
-    run_module(module, AcmeSettingsManager, params)
+    run_module(module, AcmeSettingsManager, params, ensure_kwargs={"cron": bool(module.params.get("cron"))})
 
 
 if __name__ == "__main__":
