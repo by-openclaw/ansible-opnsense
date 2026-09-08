@@ -658,6 +658,14 @@ CRUD Monit monitored services / checks (matched by `name`). `tests` / `depends` 
 | `start / stop` | str | no | -- | Commands |
 | `state` | str | no | present | `present` or `absent` |
 
+### opnsense_monit_daemon
+
+Control the Monit daemon (`os-monit`) — the process, not the monitored-service entries. `reconfigured` regenerates `monitrc`, runs the syntax test and (re)starts; a refused config (plugin answers HTTP 200 `status: failed`) fails the task with the plugin's message. `reconfigured` always applies.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `state` | str | no | running | `running`, `stopped` or `reconfigured` |
+
 ### opnsense_kea4_settings
 
 Manage the Kea DHCPv4 `general` block (singleton — only the options you set are sent). A freshly seeded FW ships Kea disabled.
