@@ -148,6 +148,12 @@ ansible-opnsense/
 | `opnsense_monit_test` | CRUD Monit tests (conditions) |
 | `opnsense_monit_service` | CRUD Monit monitored services (checks) |
 | `opnsense_monit_daemon` | Start / stop / reconfigure the Monit daemon itself (fails loudly on a refused config) |
+| `opnsense_acme_settings` | Manage ACME client (os-acme-client) general settings — enable, auto-renewal cron, environment |
+| `opnsense_acme_account` | CRUD ACME CA accounts; `state: registered` registers with the CA once |
+| `opnsense_acme_validation` | CRUD ACME challenge methods (HTTP-01 / DNS-01 Cloudflare / TLS-ALPN-01) |
+| `opnsense_acme_action` | CRUD ACME post-issue automations (restart WebGUI, HAProxy, SFTP/SSH upload) |
+| `opnsense_acme_certificate` | CRUD ACME certificates; `state: issued` signs once (idempotent), `renew: true` renews |
+| `opnsense_acme_service` | Start / stop / reconfigure the ACME client service (regenerates acme.sh config + cron) |
 | `opnsense_kea4_settings` | Manage Kea DHCPv4 general settings (enable, interfaces, lifetimes) |
 | `opnsense_kea6_settings` | Manage Kea DHCPv6 general settings |
 | `opnsense_kea_service` | Start / stop / reconfigure the Kea DHCP service |
