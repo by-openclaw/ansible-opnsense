@@ -18,8 +18,8 @@
   vars:
     conn: {host: "{{ opn_host }}", key: "{{ opn_key }}", secret: "{{ opn_secret }}", port: "{{ opn_port | default(443) }}", verify_ssl: false}
   tasks:
-    - name: "Settings — check_mode only"
-      by_systems.opnsense.opnsense_acme_settings: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, log_level: normal}
+    - name: "Settings — check_mode only (cron integration skipped in check mode)"
+      by_systems.opnsense.opnsense_acme_settings: {host: "{{ conn.host }}", key: "{{ conn.key }}", secret: "{{ conn.secret }}", port: "{{ conn.port }}", verify_ssl: false, log_level: normal, cron: true}
       check_mode: true
       register: r_set
     - name: "Account — create inttest"

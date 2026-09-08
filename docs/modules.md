@@ -680,6 +680,7 @@ ACME client (`os-acme-client`) general settings (singleton — only the options 
 | `haproxy_integration` | bool | no | -- | HAProxy integration |
 | `log_level` | str | no | -- | `normal`, `extended`, `debug`, `debug2`, `debug3` |
 | `show_intro` | bool | no | -- | GUI intro panel |
+| `cron` | bool | no | false | Converge the auto-renewal cron job via the plugin's `fetchCronIntegration` (the only way it is created) |
 
 ### opnsense_acme_account
 
