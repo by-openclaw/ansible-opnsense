@@ -36,7 +36,9 @@ class PveConsoleError(Exception):
 class PveConsole:
     """A Proxmox API client plus one serial-console session for a VM."""
 
-    def __init__(self, host, node, vmid, token_id, token_secret, validate_certs=False, port=8006):
+    def __init__(
+        self, host, node, vmid, token_id, token_secret, validate_certs=False, port=8006
+    ):
         self.host = host
         self.node = node
         self.vmid = int(vmid)
@@ -61,8 +63,17 @@ class PveConsole:
             data = urllib.parse.urlencode(body).encode()
             headers["Content-Type"] = "application/x-www-form-urlencoded"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        if (
+            req.type != "https"
+        ):  # the URL is built above, so this can only trip on a bad host
+            raise PveConsoleError(
+                "refusing a non-https Proxmox API request: {0}".format(req.type)
+            )
         try:
-            with urllib.request.urlopen(req, context=self._ctx(), timeout=30) as resp:
+            # scheme is fixed https by construction and asserted just above
+            with urllib.request.urlopen(  # nosec B310
+                req, context=self._ctx(), timeout=30
+            ) as resp:
                 return json.loads(resp.read())
         except urllib.error.HTTPError as exc:
             raise PveConsoleError(
@@ -71,26 +82,45 @@ class PveConsole:
                 )
             )
         except Exception as exc:  # noqa: BLE001 - surfaced verbatim to the operator
-            raise PveConsoleError("PVE API {0} {1} failed: {2}".format(method, path, exc))
+            raise PveConsoleError(
+                "PVE API {0} {1} failed: {2}".format(method, path, exc)
+            )
 
     def status(self):
-        return str(self.api("GET", "/nodes/{0}/qemu/{1}/status/current".format(self.node, self.vmid))["data"].get("status"))
+        return str(
+            self.api(
+                "GET", "/nodes/{0}/qemu/{1}/status/current".format(self.node, self.vmid)
+            )["data"].get("status")
+        )
 
     def start(self):
-        return self.api("POST", "/nodes/{0}/qemu/{1}/status/start".format(self.node, self.vmid))
+        return self.api(
+            "POST", "/nodes/{0}/qemu/{1}/status/start".format(self.node, self.vmid)
+        )
 
     # ---------------- console ----------------
     def open(self):
         """Open the termproxy websocket and complete its handshake."""
         if not HAS_WEBSOCKET:
-            raise PveConsoleError("the python 'websocket-client' library is required: " + str(WEBSOCKET_IMPORT_ERROR))
-        tp = self.api("POST", "/nodes/{0}/qemu/{1}/termproxy".format(self.node, self.vmid))["data"]
+            raise PveConsoleError(
+                "the python 'websocket-client' library is required: "
+                + str(WEBSOCKET_IMPORT_ERROR)
+            )
+        tp = self.api(
+            "POST", "/nodes/{0}/qemu/{1}/termproxy".format(self.node, self.vmid)
+        )["data"]
         qs = urllib.parse.urlencode({"port": tp["port"], "vncticket": tp["ticket"]})
         url = "wss://{0}:{1}/api2/json/nodes/{2}/qemu/{3}/vncwebsocket?{4}".format(
             self.host, self.port, self.node, self.vmid, qs
         )
-        ws = websocket.WebSocket(sslopt={"cert_reqs": ssl.CERT_NONE} if not self.validate_certs else None)
-        ws.connect(url, header=["Authorization: {0}".format(self.auth)], subprotocols=["binary"])
+        ws = websocket.WebSocket(
+            sslopt={"cert_reqs": ssl.CERT_NONE} if not self.validate_certs else None
+        )
+        ws.connect(
+            url,
+            header=["Authorization: {0}".format(self.auth)],
+            subprotocols=["binary"],
+        )
         ws.settimeout(0.1)
         ws.send_binary("{0}:{1}\n".format(tp["user"], tp["ticket"]).encode())
         self._ws = ws
@@ -103,7 +133,9 @@ class PveConsole:
                 buf += chunk
                 if b"OK" in buf:
                     return
-        raise PveConsoleError("termproxy did not acknowledge the session (no OK): {0!r}".format(buf[:80]))
+        raise PveConsoleError(
+            "termproxy did not acknowledge the session (no OK): {0!r}".format(buf[:80])
+        )
 
     def read(self):
         """Non-blocking-ish read; b'' when nothing is pending."""

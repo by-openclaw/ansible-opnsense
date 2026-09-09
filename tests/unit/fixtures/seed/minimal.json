@@ -1,0 +1,11 @@
+{
+  "hostname": "vm-opns-fixture-min",
+  "domain": "example.invalid",
+  "timezone": "Etc/UTC",
+  "ipv4_prefix": 24,
+  "ipv6_prefix": 64,
+  "genesis_creds_file": "genesis.json",
+  "physical_interfaces": {"trunk": "vtnet0", "oob": "vtnet1"},
+  "lan": {"if": "vtnet1", "descr": "OOB_MGMT", "ipv4": "dhcp"},
+  "trunk": {"if": "vtnet0", "descr": "LAN_TRUNK"}
+}
