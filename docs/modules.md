@@ -851,6 +851,10 @@ CRUD radvd entries (matched by `interface`).
 | `mode` | str | no | -- | router, unmanaged, managed, assist, stateless |
 | `base6_interface` | str | no | -- | Track this interface's prefix (API `Base6Interface`) |
 | `deprecate_prefix / remove_adv_on_exit / remove_route` | str | no | -- | `on`/`off`/empty |
+| `advertise_dns` | bool | no | -- | Advertise DNS in the RA (`dns`). **With this on and `rdnss` empty, radvd advertises the interface's own address**, so IPv6 clients resolve at the firewall whatever DHCPv4 says |
+| `rdnss` | str | no | -- | Resolvers to advertise (RFC 8106, `RDNSS`) — up to three IPv6 addresses, comma separated. This is what gives IPv6 clients the same resolver as IPv4 |
+| `dnssl` | str | no | -- | Search domain list to advertise (`DNSSL`) |
+| `rdnss_lifetime` / `dnssl_lifetime` | str | no | -- | Lifetimes in seconds (`AdvRDNSSLifetime` / `AdvDNSSLLifetime`) |
 | `state` | str | no | present | `present` or `absent` |
 
 ### opnsense_radvd_service

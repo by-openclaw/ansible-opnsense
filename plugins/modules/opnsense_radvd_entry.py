@@ -74,6 +74,31 @@ options:
     description: Remove the route on exit (API field C(RemoveRoute)).
     type: str
     choices: ["", "on", "off"]
+  advertise_dns:
+    description:
+      - >
+        Advertise DNS configuration in the router advertisement (API field C(dns)).
+      - >
+        With this on and I(rdnss) EMPTY, radvd advertises the interface's own address, so
+        IPv6 clients resolve at the firewall whatever DHCPv4 hands out. Set I(rdnss) to
+        point them somewhere specific.
+    type: bool
+  rdnss:
+    description:
+      - >
+        Recursive DNS servers to advertise (RFC 8106, API field C(RDNSS)) — up to three
+        IPv6 addresses, comma separated. This is what gives IPv6 clients the same resolver
+        as IPv4.
+    type: str
+  dnssl:
+    description: DNS search domain list to advertise (RFC 8106, API field C(DNSSL)).
+    type: str
+  rdnss_lifetime:
+    description: Lifetime for the advertised resolvers, in seconds (API field C(AdvRDNSSLifetime)).
+    type: str
+  dnssl_lifetime:
+    description: Lifetime for the advertised search list, in seconds (API field C(AdvDNSSLLifetime)).
+    type: str
   state:
     description: Desired state.
     type: str
@@ -92,6 +117,16 @@ EXAMPLES = r"""
     interface: opt2
     mode: unmanaged
     enabled: true
+
+- name: Point IPv6 clients at the same filtering resolver IPv4 clients use
+  by_systems.opnsense.opnsense_radvd_entry:
+    host: "{{ opn_host }}"
+    key: "{{ opn_key }}"
+    secret: "{{ opn_secret }}"
+    interface: opt2
+    enabled: true
+    advertise_dns: true
+    rdnss: "fd01:3::101"
 """
 
 RETURN = r"""
@@ -121,6 +156,11 @@ except ImportError:
 
 
 _API_NAMES = {
+    "advertise_dns": "dns",
+    "rdnss": "RDNSS",
+    "dnssl": "DNSSL",
+    "rdnss_lifetime": "AdvRDNSSLifetime",
+    "dnssl_lifetime": "AdvDNSSLLifetime",
     "base6_interface": "Base6Interface",
     "deprecate_prefix": "DeprecatePrefix",
     "remove_adv_on_exit": "RemoveAdvOnExit",
@@ -139,6 +179,11 @@ def main() -> None:
                 "type": "str",
                 "choices": ["router", "unmanaged", "managed", "assist", "stateless"],
             },
+            "advertise_dns": {"type": "bool"},
+            "rdnss": {"type": "str"},
+            "dnssl": {"type": "str"},
+            "rdnss_lifetime": {"type": "str"},
+            "dnssl_lifetime": {"type": "str"},
             "base6_interface": {"type": "str"},
             "deprecate_prefix": {"type": "str", "choices": ["", "on", "off"]},
             "remove_adv_on_exit": {"type": "str", "choices": ["", "on", "off"]},
@@ -153,10 +198,15 @@ def main() -> None:
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
     params: dict = {"interface": module.params["interface"]}
-    if module.params.get("enabled") is not None:
-        params["enabled"] = "1" if module.params["enabled"] else "0"
+    for flag in ("enabled", "advertise_dns"):
+        if module.params.get(flag) is not None:
+            params[_API_NAMES.get(flag, flag)] = "1" if module.params[flag] else "0"
     for field in (
         "mode",
+        "rdnss",
+        "dnssl",
+        "rdnss_lifetime",
+        "dnssl_lifetime",
         "base6_interface",
         "deprecate_prefix",
         "remove_adv_on_exit",
