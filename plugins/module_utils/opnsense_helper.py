@@ -27,6 +27,12 @@ def opn_argument_spec() -> dict[str, Any]:
         "secret": {"type": "str", "required": True, "no_log": True},
         "port": {"type": "int", "default": 443},
         "verify_ssl": {"type": "bool", "default": False},
+        # Several resources carrying the same identity keys make an otherwise idempotent
+        # converge fail (AmbiguousMatchError) — the manager will not guess which one the
+        # catalog meant. With this on, the lowest-UUID copy survives and converges and the
+        # rest are deleted. Off by default: deleting is never a silent default. Ignored by
+        # managers whose ensure() takes no dedupe argument (services, singletons).
+        "dedupe": {"type": "bool", "default": False},
     }
 
 
@@ -104,6 +110,8 @@ async def run_ensure(
 
         ensure_params = inspect.signature(mgr.ensure).parameters
         extra = dict(ensure_kwargs or {})
+        if "dedupe" in ensure_params and "dedupe" not in extra:
+            extra["dedupe"] = bool(module.params.get("dedupe", False))
         if "params" in ensure_params:
             result = await mgr.ensure(
                 state=module.params["state"],
@@ -129,6 +137,7 @@ async def run_ensure(
             "action": result.action,
             "uuid": result.uuid or "",
             "diff": diff,
+            "deduped": list(getattr(result, "deduped", ()) or []),
         }
 
     except ImportError as exc:
