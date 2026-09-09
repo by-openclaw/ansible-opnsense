@@ -219,6 +219,17 @@ def main() -> None:
     try:
         state = console.status()
     except PveConsoleError as exc:
+        # In check mode the VM legitimately may not exist yet — the task that creates it was itself
+        # skipped. Report what would happen instead of failing the whole run.
+        if module.check_mode:
+            module.exit_json(
+                changed=True,
+                imported=False,
+                elapsed=0,
+                console_tail="",
+                msg="would drive the importer on vmid %s once it exists, answering with device %s"
+                % (p["vmid"], p["device"]),
+            )
         module.fail_json(msg=str(exc))
 
     if module.check_mode:
