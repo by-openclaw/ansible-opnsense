@@ -678,6 +678,11 @@ then the WANs, then the fabric port. The Ansible catalog assigns every rule and 
 identifiers, so a render that renumbered them would land every rule on the wrong interface after a
 reseed.
 
+A seed that declares `lan.ipv4_gateway` also gets a static gateway on the out-of-band port
+(`OOB_GW`). It is the default route only when the seed has no WAN — on a firewall with an ISP uplink
+an OOB default would blackhole every egress. Without it a firewall whose only uplink *is* the OOB
+port boots with no route and cannot reach the firmware mirrors.
+
 Secrets (break-glass API key and password hashes, PPPoE and static-WAN credentials, LDAP bind
 password, internal domain) are read from the secret store at render time and never committed to a
 seed profile. A placeholder with no secret behind it is an error. Idempotent: the freshly salted

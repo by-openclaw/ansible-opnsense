@@ -57,6 +57,9 @@ _EXTRA_PLACEHOLDERS = {
 # it is minted from this one by ansible-platform roles/opnsense_api_bootstrap.
 _GENESIS_PLACEHOLDERS = ("__OOBADMIN_APIKEYS__", "__OOBADMIN_PASSWORD_HASH__")
 
+# Name of the static gateway rendered for a seed that declares one on the OOB port.
+OOB_GATEWAY_NAME = "OOB_GW"
+
 
 def _read_json_fields(path, what):
     """Read a fabric secret file and return its ``fields`` mapping."""
@@ -328,6 +331,11 @@ def _lan(node: ET.Element, cfg: dict, *, track6: dict | None = None) -> None:
     ET.SubElement(node, "ipaddr").text = cfg["ipv4"]
     if cfg.get("ipv4") not in ("dhcp", "none", ""):
         ET.SubElement(node, "subnet").text = str(cfg["ipv4_prefix"])
+        # A statically addressed OOB port has no route unless the seed gives it one. On a
+        # firewall whose only uplink IS the OOB port that route is what lets it reach the
+        # firmware mirrors on first boot, so it belongs in the seed, not in a later apply.
+        if cfg.get("ipv4_gateway"):
+            ET.SubElement(node, "gateway").text = OOB_GATEWAY_NAME
     _emit_ipv6(node, cfg, track6=track6)
 
 
@@ -469,6 +477,28 @@ def compute_slot_map(seed: dict) -> dict:
     return slots
 
 
+def _oob_gateway(seed: dict) -> ET.Element | None:
+    """Static gateway for the OOB port, when the seed declares one.
+
+    Default only when nothing else can be: a firewall with a WAN takes its default route
+    from the ISP, and an OOB gateway that claimed it would blackhole every egress.
+    """
+    address = seed.get("lan", {}).get("ipv4_gateway")
+    if not address:
+        return None
+    item = ET.Element("gateway_item")
+    ET.SubElement(item, "interface").text = "lan"
+    ET.SubElement(item, "gateway").text = address
+    ET.SubElement(item, "name").text = OOB_GATEWAY_NAME
+    ET.SubElement(item, "weight").text = "1"
+    ET.SubElement(item, "ipprotocol").text = "inet"
+    ET.SubElement(item, "descr").text = "OOB management gateway"
+    ET.SubElement(item, "monitor_disable").text = "1"
+    if "wan" not in seed and "wan2" not in seed:
+        ET.SubElement(item, "defaultgw").text = "1"
+    return item
+
+
 def build_gateways(seed: dict, slot_map: dict) -> ET.Element | None:
     """Emit <gateways> block — primarily for static WAN2 (Telenet).
 
@@ -476,9 +506,14 @@ def build_gateways(seed: dict, slot_map: dict) -> ET.Element | None:
     boot when OPNsense processes the <wan> with ipaddr=pppoe — we don't need to
     declare them here. Only static gateways need explicit <gateway_item> entries.
     """
+    oob = _oob_gateway(seed)
     w2 = seed.get("wan2")
     if not w2:
-        return None
+        if oob is None:
+            return None
+        gws = ET.Element("gateways")
+        gws.append(oob)
+        return gws
     creds = _read_wan_creds(w2["creds_secret"])
     wan2_slot = slot_map.get("wan2")
     if not wan2_slot:
@@ -515,6 +550,9 @@ def build_gateways(seed: dict, slot_map: dict) -> ET.Element | None:
         ET.SubElement(g6, "monitor_disable").text = "1"
     if w2.get("default_gateway_v6"):
         ET.SubElement(g6, "defaultgw").text = "1"
+
+    if oob is not None:
+        gws.append(oob)
 
     return gws
 

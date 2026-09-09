@@ -116,6 +116,45 @@ def test_minimal_seed_renders_oob_trunk_and_loopback_only(secret_dir: Path) -> N
     assert ifs.find("lan/subnet") is None  # dhcp carries no prefix
 
 
+def test_an_oob_only_firewall_gets_a_default_route_from_its_seed(
+    secret_dir: Path,
+) -> None:
+    seed = _seed("minimal", secret_dir)
+    seed["lan"] = {
+        "if": "vtnet1",
+        "descr": "OOB",
+        "ipv4": "192.0.2.197",
+        "ipv4_prefix": 24,
+        "ipv4_gateway": "192.0.2.1",
+    }
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    assert root.find("interfaces/lan/gateway").text == "OOB_GW"
+    item = root.find("gateways/gateway_item")
+    assert item.find("interface").text == "lan"
+    assert item.find("gateway").text == "192.0.2.1"
+    assert item.find("defaultgw").text == "1"  # nothing else can be the default here
+
+
+def test_the_oob_gateway_never_takes_the_default_from_a_wan(secret_dir: Path) -> None:
+    seed = _seed("full", secret_dir)
+    seed["lan"]["ipv4"] = "192.0.2.195"
+    seed["lan"]["ipv4_prefix"] = 24
+    seed["lan"]["ipv4_gateway"] = "192.0.2.1"
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    oob = [g for g in root.find("gateways") if g.find("name").text == "OOB_GW"][0]
+    assert oob.find("defaultgw") is None
+    assert oob.find("monitor_disable").text == "1"
+
+
+def test_a_dhcp_oob_port_gets_no_static_gateway(secret_dir: Path) -> None:
+    root = _render("minimal", secret_dir)  # the fixture's OOB port is dhcp
+    assert root.find("interfaces/lan/gateway") is None
+
+
 def test_minimal_seed_emits_no_gateways_and_no_ppps(secret_dir: Path) -> None:
     root = _render("minimal", secret_dir)
     assert root.find("gateways") is None
