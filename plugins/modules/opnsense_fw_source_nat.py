@@ -40,6 +40,16 @@ options:
     description: Verify TLS certificate.
     type: bool
     default: false
+  dedupe:
+    description:
+      - >
+        Collapse several resources that carry the same identity keys instead of failing.
+        Without it a duplicate makes the task fail with an ambiguous-match error, because the
+        module will not guess which copy the catalog meant. With it the lowest-UUID copy
+        survives and converges and the rest are deleted.
+      - Off by default — deleting is never a silent default.
+    type: bool
+    default: false
   description:
     description: Rule description (used as unique identifier for matching).
     type: str

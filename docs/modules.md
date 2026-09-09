@@ -15,6 +15,7 @@ All modules accept these connection parameters:
 | `secret` | str | yes | -- | API secret (`no_log: true`) |
 | `port` | int | no | 443 | HTTPS port |
 | `verify_ssl` | bool | no | false | Verify TLS certificate |
+| `dedupe` | bool | no | false | Collapse duplicate resources sharing one identity instead of failing on the ambiguity — lowest UUID survives and converges, the rest are deleted |
 
 ---
 
