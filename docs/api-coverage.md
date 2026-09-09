@@ -115,6 +115,7 @@
 | ACME | `opnsense_acme_action` | `AcmeActionManager` | `name` | 26.1 | `DONE` |
 | ACME | `opnsense_acme_certificate` | `AcmeCertificateManager` | `name` (+ `issued`/`renew`) | 26.1 | `DONE` |
 | ACME | `opnsense_acme_service` | `AcmeServiceManager` | -- (service state) | 26.1 | `DONE` |
+| Provisioning | `opnsense_seed_import` | -- (Proxmox console, not the OPNsense API) | -- | any | `DONE` |
 
 ## DHCP settings / radvd / dnsmasq (7 modules)
 

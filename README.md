@@ -154,6 +154,7 @@ ansible-opnsense/
 | `opnsense_acme_action` | CRUD ACME post-issue automations (restart WebGUI, HAProxy, SFTP/SSH upload) |
 | `opnsense_acme_certificate` | CRUD ACME certificates; `state: issued` signs once (idempotent), `renew: true` renews |
 | `opnsense_acme_service` | Start / stop / reconfigure the ACME client service (regenerates acme.sh config + cron) |
+| `opnsense_seed_import` | Seed a **fresh** OPNsense VM: drives its boot-time configuration importer over the Proxmox console (the one step a fresh appliance has no API for) |
 | `opnsense_kea4_settings` | Manage Kea DHCPv4 general settings (enable, interfaces, lifetimes) |
 | `opnsense_kea6_settings` | Manage Kea DHCPv6 general settings |
 | `opnsense_kea_service` | Start / stop / reconfigure the Kea DHCP service |

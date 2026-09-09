@@ -666,6 +666,31 @@ Control the Monit daemon (`os-monit`) — the process, not the monitored-service
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | running | `running`, `stopped` or `reconfigured` |
 
+### opnsense_seed_import
+
+Seed a **fresh** OPNsense VM on Proxmox VE. A freshly imaged appliance has no API, no SSH and no
+configuration, so the only way to hand it a `config.xml` is its own boot-time importer — which gates
+on a keypress (upstream `src/sbin/opnsense-importer`). This module boots the VM, waits for the
+importer prompt, sends one carriage return, answers the device prompt, and returns once the appliance
+reports it is restoring. Everything after that first boot is ordinary API work.
+
+One-shot by nature: a successful run always reports `changed`. Needs `websocket-client` on the
+controller. Ordering is enforced — nothing is sent before its prompt, because early input pollutes the
+appliance's buffer and the import fails.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `pve_host` | str | yes | -- | Proxmox API host |
+| `pve_port` | int | no | 8006 | Proxmox API port |
+| `pve_node` | str | yes | -- | Node the VM lives on |
+| `pve_token_id` / `pve_token_secret` | str | yes | -- | API token (secret is `no_log`) |
+| `validate_certs` | bool | no | false | Verify the Proxmox API certificate |
+| `vmid` | int | yes | -- | VM to seed |
+| `device` | str | no | vtbd1 | Device holding the configuration, as the appliance sees it |
+| `start_vm` | bool | no | true | Start the VM if it is not running |
+| `timeout` | int | no | 600 | Seconds to wait for the restore to begin |
+| `settle` | int | no | 45 | Seconds to let the import and boot finish |
+
 ### opnsense_acme_settings
 
 ACME client (`os-acme-client`) general settings (singleton — only the options you set are diffed and sent). The lib reconfigures the service after a change, which regenerates the acme.sh configuration and the renewal cron.
