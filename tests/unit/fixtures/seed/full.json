@@ -1,0 +1,32 @@
+{
+  "hostname": "vm-opns-fixture-full",
+  "domain": "example.invalid",
+  "timezone": "Etc/UTC",
+  "ipv4_prefix": 24,
+  "ipv6_prefix": 64,
+  "genesis_creds_file": "genesis.json",
+  "physical_interfaces": {"trunk": "vtnet0", "oob": "vtnet1", "wan": "vtnet2", "wan2": "vtnet3", "fab": "vtnet4"},
+  "lan": {"if": "vtnet1", "descr": "OOB_MGMT", "ipv4": "dhcp"},
+  "trunk": {"if": "vtnet0", "descr": "LAN_TRUNK"},
+  "vlans": [
+    {"tag": 100, "pcp": 0, "descr": "MGMT", "vlanif": "vlan0.100", "ipv4": "192.0.2.1", "ipv6": "2001:db8:0:100::1"},
+    {"tag": 200, "pcp": 3, "descr": "SVC", "vlanif": "vlan0.200", "ipv4": "192.0.2.65", "ipv4_prefix": 26, "ipv6": "2001:db8:0:200::1"}
+  ],
+  "ipv6_pd_tracking": {
+    "track_source": "opt12",
+    "interfaces": {"vlan0.100": {"prefix_id": "0x1"}}
+  },
+  "wan": {
+    "if": "pppoe0", "descr": "WAN_ISP1", "ipv4": "pppoe", "ipv6": "dhcp6",
+    "block_private": true, "block_bogons": true, "mtu": 1492,
+    "ipv6_dhcp6_ia_pd_only": true, "ipv6_prefix_hint": 56, "ipv6_send_rapid_commit": true,
+    "pppoe_link_interface": "vtnet2", "pppoe_creds_secret": "__SECRET_DIR__/pppoe-fixture.json",
+    "pppoe_service_name": ""
+  },
+  "wan2": {
+    "if": "vtnet3", "descr": "WAN_ISP2", "block_private": true, "block_bogons": true,
+    "creds_secret": "__SECRET_DIR__/wan2-fixture.json",
+    "gateway_descr": "WAN2 gateway", "default_gateway_v4": true
+  },
+  "fab": {"if": "vtnet4", "descr": "FAB", "ipaddr": "198.51.100.2", "subnet": 20}
+}

@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<opnsense>
+  <version>1.0.0</version>
+  <system>
+    <hostname>PLACEHOLDER</hostname>
+    <domain>PLACEHOLDER</domain>
+    <timezone>UTC</timezone>
+    <user>
+      <name>root</name>
+      <password>__ROOT_PASSWORD_HASH__</password>
+    </user>
+    <user>
+      <name>oob-admin</name>
+      <password>__OOBADMIN_PASSWORD_HASH__</password>
+      <apikeys>__OOBADMIN_APIKEYS__</apikeys>
+    </user>
+    <webgui>
+      <protocol>https</protocol>
+    </webgui>
+  </system>
+</opnsense>

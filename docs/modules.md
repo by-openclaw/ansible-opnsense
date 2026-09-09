@@ -666,6 +666,32 @@ Control the Monit daemon (`os-monit`) — the process, not the monitored-service
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | running | `running`, `stopped` or `reconfigured` |
 
+### opnsense_seed_config
+
+Render the `config.xml` a fresh firewall is seeded with. On 26.7 the MVC API has no controller for
+interface assignment or per-interface addressing (`interfaces/assign/*` is 404), so the configuration
+has to exist **before** the firewall is reachable — this module produces it, and
+`opnsense_seed_import` hands it to the appliance.
+
+The slot layout is load-bearing: `lan` is out-of-band, `opt1` the VLAN trunk, `opt2..optN` the VLANs,
+then the WANs, then the fabric port. The Ansible catalog assigns every rule and VLAN by these
+identifiers, so a render that renumbered them would land every rule on the wrong interface after a
+reseed.
+
+Secrets (break-glass API key and password hashes, PPPoE and static-WAN credentials, LDAP bind
+password, internal domain) are read from the secret store at render time and never committed to a
+seed profile. A placeholder with no secret behind it is an error. Idempotent: the freshly salted
+genesis hashes are ignored when deciding whether anything changed.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `seed` | dict | one of | -- | Parsed seed profile (mutually exclusive with `seed_file`) |
+| `seed_file` | path | one of | -- | Path to the seed profile JSON |
+| `baseline` | path | yes | -- | Baseline `config.xml` template holding the placeholders |
+| `dest` | path | yes | -- | Where to write the rendered configuration |
+| `secret_dir` | path | yes | -- | Directory holding the fabric secret files |
+| `bcrypt_rounds` | int | no | 10 | Cost factor for the genesis GUI password hash |
+
 ### opnsense_seed_import
 
 Seed a **fresh** OPNsense VM on Proxmox VE. A freshly imaged appliance has no API, no SSH and no
