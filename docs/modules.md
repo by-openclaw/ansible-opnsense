@@ -698,6 +698,10 @@ genesis hashes are ignored when deciding whether anything changed.
 | `secret_dir` | path | yes | -- | Directory holding the fabric secret files |
 | `bcrypt_rounds` | int | no | 10 | Cost factor for the genesis GUI password hash |
 
+A seed profile may set `dns_servers` to replace the baseline's resolvers. That matters where the
+segment a firewall first boots on blocks external DNS — ours does, and a firewall that cannot
+resolve cannot reach the firmware mirrors. A profile that says nothing keeps the baseline's.
+
 ### opnsense_seed_import
 
 Seed a **fresh** OPNsense VM on Proxmox VE. A freshly imaged appliance has no API, no SSH and no

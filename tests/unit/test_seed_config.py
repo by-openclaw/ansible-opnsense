@@ -291,3 +291,30 @@ def test_redaction_blanks_every_injected_secret() -> None:
     assert "$6$salt$hash" not in rendered
     assert "c3NoLWVkMjU1MTk=" not in rendered
     assert "<hostname>vm-opns-01</hostname>" in rendered
+
+
+def test_a_seed_can_name_its_own_resolvers(secret_dir: Path) -> None:
+    # The baseline's public resolver is unreachable on a management segment that blocks
+    # external DNS, and a firewall that cannot resolve cannot reach the firmware mirrors.
+    seed = _seed("minimal", secret_dir)
+    seed["dns_servers"] = ["10.6.224.1", "10.1.3.101"]
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    assert [e.text for e in root.find("system").findall("dnsserver")] == [
+        "10.6.224.1",
+        "10.1.3.101",
+    ]
+
+
+def test_a_seed_without_resolvers_keeps_the_baseline(secret_dir: Path) -> None:
+    root = ET.fromstring(
+        render_config(
+            _seed("minimal", secret_dir),
+            BASELINE,
+            str(secret_dir),
+            genesis_hashes=HASHES,
+        )
+    )
+    # the fixture baseline declares none, so nothing is invented either
+    assert root.find("system").findall("dnsserver") == []
