@@ -318,3 +318,100 @@ def test_a_seed_without_resolvers_keeps_the_baseline(secret_dir: Path) -> None:
     )
     # the fixture baseline declares none, so nothing is invented either
     assert root.find("system").findall("dnsserver") == []
+
+
+class TestVaultSuppliedSecrets:
+    """Credentials handed in by the caller (from Vault) beat the files the seed names.
+
+    The renderer only ever read files, and that is how an ISP password went stale in BOTH the
+    file and Vault while only the running firewall held the working value — the 26.7 rebuild
+    then came up with no Proximus uplink (ansible-platform#360).
+    """
+
+    def test_supplied_pppoe_credentials_win_over_the_file(
+        self, secret_dir: Path
+    ) -> None:
+        seed = _seed("full", secret_dir)
+        root = ET.fromstring(
+            render_config(
+                seed,
+                BASELINE,
+                str(secret_dir),
+                genesis_hashes=HASHES,
+                secrets={
+                    "pppoe": {
+                        "pppoe_username": "from-vault@isp",
+                        "pppoe_password": "vault-pw",  # pragma: allowlist secret
+                    }
+                },
+            )
+        )
+        assert root.findtext("ppps/ppp/username") == "from-vault@isp"
+
+    def test_supplied_static_wan_wins_over_the_file(self, secret_dir: Path) -> None:
+        seed = _seed("full", secret_dir)
+        root = ET.fromstring(
+            render_config(
+                seed,
+                BASELINE,
+                str(secret_dir),
+                genesis_hashes=HASHES,
+                secrets={
+                    "wan2": {
+                        "ipv4_address": "203.0.113.9",
+                        "ipv4_prefix": 29,
+                        "ipv4_gateway": "203.0.113.1",
+                        "ipv6_address": "2001:db8:cafe::9",
+                        "ipv6_prefix": 64,
+                        "ipv6_gateway": "2001:db8:cafe::1",
+                    }
+                },
+            )
+        )
+        assert root.findtext("interfaces/opt5/ipaddr") == "203.0.113.9"
+        assert [g.findtext("gateway") for g in root.find("gateways")] == [
+            "203.0.113.1",
+            "2001:db8:cafe::1",
+        ]
+
+    def test_supplied_domain_wins_over_the_file(self, secret_dir: Path) -> None:
+        seed = _seed("minimal", secret_dir)
+        seed["domain_secret"] = str(secret_dir / "domain.json")
+        root = ET.fromstring(
+            render_config(
+                seed,
+                BASELINE,
+                str(secret_dir),
+                genesis_hashes=HASHES,
+                secrets={"domain": {"domain": "vault.invalid"}},
+            )
+        )
+        assert root.findtext("system/domain") == "vault.invalid"
+
+    def test_a_missing_key_still_falls_back_to_the_file(self, secret_dir: Path) -> None:
+        # break-glass: Vault unreachable for one credential must not break the render
+        seed = _seed("full", secret_dir)
+        root = ET.fromstring(
+            render_config(
+                seed,
+                BASELINE,
+                str(secret_dir),
+                genesis_hashes=HASHES,
+                secrets={"domain": {"domain": "vault.invalid"}},  # pppoe/wan2 absent
+            )
+        )
+        assert root.findtext("ppps/ppp/username") == "user@isp"  # from the file
+        assert root.findtext("interfaces/opt5/ipaddr") == "198.51.100.10"
+
+    def test_no_secrets_supplied_renders_exactly_as_before(
+        self, secret_dir: Path
+    ) -> None:
+        seed = _seed("full", secret_dir)
+        a = render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+        b = render_config(
+            seed, BASELINE, str(secret_dir), genesis_hashes=HASHES, secrets=None
+        )
+        c = render_config(
+            seed, BASELINE, str(secret_dir), genesis_hashes=HASHES, secrets={}
+        )
+        assert a == b == c

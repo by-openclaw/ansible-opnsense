@@ -697,6 +697,7 @@ genesis hashes are ignored when deciding whether anything changed.
 | `dest` | path | yes | -- | Where to write the rendered configuration |
 | `secret_dir` | path | yes | -- | Directory holding the fabric secret files |
 | `bcrypt_rounds` | int | no | 10 | Cost factor for the genesis GUI password hash |
+| `secrets` | dict | no | -- | Credentials the caller already resolved, normally from Vault (`genesis`, `bootstrap`, `pppoe`, `wan2`, `domain`, `ldap_bind_password`). Supplied values win; missing ones fall back to the file the seed names |
 
 A seed profile may set `dns_servers` to replace the baseline's resolvers. That matters where the
 segment a firewall first boots on blocks external DNS — ours does, and a firewall that cannot
