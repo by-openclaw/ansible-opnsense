@@ -55,6 +55,19 @@ options:
     description: Cost factor for the genesis GUI password hash.
     type: int
     default: 10
+  secrets:
+    description:
+      - >
+        Credentials the caller already resolved — normally read from Vault by the provisioning
+        role, which is where they belong. Keys - C(genesis), C(bootstrap), C(pppoe), C(wan2),
+        C(domain), C(ldap_bind_password); each value is the credential's field mapping.
+      - >
+        Anything supplied here wins over the file the seed names; anything missing falls back to
+        that file, so this is not a flag-day and break-glass still works with Vault unreachable.
+      - >
+        Reading only files is how an ISP password went stale in both the file and Vault while the
+        running firewall held the working one, and a rebuild then came up with no uplink.
+    type: dict
 requirements:
   - bcrypt
   - passlib (only on Python 3.13+, where the stdlib C(crypt) module was removed)
@@ -131,6 +144,7 @@ def main() -> None:
             "dest": {"type": "path", "required": True},
             "secret_dir": {"type": "path", "required": True},
             "bcrypt_rounds": {"type": "int", "default": 10},
+            "secrets": {"type": "dict", "no_log": True},
         },
         mutually_exclusive=[["seed", "seed_file"]],
         required_one_of=[["seed", "seed_file"]],
@@ -149,6 +163,7 @@ def main() -> None:
             baseline,
             module.params["secret_dir"],
             bcrypt_rounds=module.params["bcrypt_rounds"],
+            secrets=module.params["secrets"],
         )
         slots = compute_slot_map(seed)
     except (OSError, ValueError) as exc:

@@ -61,6 +61,19 @@ _GENESIS_PLACEHOLDERS = ("__OOBADMIN_APIKEYS__", "__OOBADMIN_PASSWORD_HASH__")
 OOB_GATEWAY_NAME = "OOB_GW"
 
 
+def resolve_secret(name, path, what, supplied=None):
+    """Return a credential's fields, preferring what the caller supplied over a file.
+
+    ``supplied`` is the Vault-sourced mapping the provisioning role passes in. Reading files
+    is the break-glass fallback: Vault is the secret store, and a renderer that only ever read
+    files is how an ISP password went stale in BOTH stores while only the running firewall held
+    the working value (ansible-platform#360).
+    """
+    if supplied and name in supplied and supplied[name]:
+        return supplied[name]
+    return _read_json_fields(path, what)
+
+
 def _read_json_fields(path, what):
     """Read a fabric secret file and return its ``fields`` mapping."""
     if not os.path.exists(path):
@@ -102,7 +115,7 @@ def bcrypt_hash(password, rounds=10):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds)).decode()
 
 
-def _inject_genesis(text, seed, secret_dir, rounds=10, hashes=None):
+def _inject_genesis(text, seed, secret_dir, rounds=10, hashes=None, supplied=None):
     """Render the oob-admin genesis API key + GUI password hash into the config."""
     if not any(p in text for p in _GENESIS_PLACEHOLDERS):
         return text
@@ -112,7 +125,7 @@ def _inject_genesis(text, seed, secret_dir, rounds=10, hashes=None):
             "baseline has genesis placeholders but the seed lacks 'genesis_creds_file'"
         )
     fpath = os.path.join(secret_dir, fname)
-    fields = _read_json_fields(fpath, "genesis secret file")
+    fields = resolve_secret("genesis", fpath, "genesis secret file", supplied)
     for key in ("key", "secret", "webgui_password"):
         if not str(fields.get(key, "")).strip():
             raise SeedConfigError(
@@ -128,7 +141,7 @@ def _inject_genesis(text, seed, secret_dir, rounds=10, hashes=None):
     return text
 
 
-def _inject_bootstrap_secrets(text, secret_dir):
+def _inject_bootstrap_secrets(text, secret_dir, supplied=None):
     """Replace baseline placeholders with values from the secret store.
 
     Fail loud if a placeholder is present but its secret is missing — never ship a
@@ -137,7 +150,7 @@ def _inject_bootstrap_secrets(text, secret_dir):
     if not any(p in text for p in list(_PLACEHOLDERS) + list(_EXTRA_PLACEHOLDERS)):
         return text
     bootstrap = os.path.join(secret_dir, BOOTSTRAP_SECRET_NAME)
-    fields = _read_json_fields(bootstrap, "bootstrap secret")
+    fields = resolve_secret("bootstrap", bootstrap, "bootstrap secret", supplied)
     for ph, key in _PLACEHOLDERS.items():
         if ph in text:
             val = str(fields.get(key, "")).strip()
@@ -149,7 +162,9 @@ def _inject_bootstrap_secrets(text, secret_dir):
     for ph, (fname, key) in _EXTRA_PLACEHOLDERS.items():
         if ph in text:
             fpath = os.path.join(secret_dir, fname)
-            extra = _read_json_fields(fpath, "secret file")
+            extra = resolve_secret(
+                ph.strip("_").lower(), fpath, "secret file", supplied
+            )
             val = str(extra.get(key, "")).strip()
             if not val:
                 raise SeedConfigError(
@@ -164,7 +179,7 @@ def _ip_network(prefix: int) -> int:
     return prefix
 
 
-def build_interfaces(seed: dict) -> ET.Element:
+def build_interfaces(seed: dict, supplied=None) -> ET.Element:
     """Emit <interfaces> matching OPNsense's serialization.
 
     Layout — matches the LIVE FW + the ansible MVC catalog (verified 2026-06-13):
@@ -232,7 +247,7 @@ def build_interfaces(seed: dict) -> ET.Element:
     # opt13 = WAN2 Telenet static.
     if "wan2" in seed:
         wan2_node = ET.SubElement(ifs, f"opt{opt_idx}")
-        _wan2(wan2_node, seed["wan2"])
+        _wan2(wan2_node, seed["wan2"], supplied)
         opt_idx += 1
 
     # opt14 = FAB fabric MGMT (vtnet4 -> vmbrFAB). Only if seed has "fab".
@@ -416,7 +431,7 @@ def _track6_for(if_name: str, pd: dict | None) -> dict | None:
     }
 
 
-def _wan2(node: ET.Element, w2: dict) -> None:
+def _wan2(node: ET.Element, w2: dict, supplied=None) -> None:
     """OPNsense static WAN2 (e.g. Telenet). Reads IPs from secret file at build time.
 
     No PPPoE — IPv4 and IPv6 are both static. Gateway is referenced by name
@@ -426,7 +441,7 @@ def _wan2(node: ET.Element, w2: dict) -> None:
     creds_path = w2.get("creds_secret")
     if not creds_path:
         raise SeedConfigError("wan2.creds_secret is required for static WAN2")
-    creds = _read_wan_creds(creds_path)
+    creds = _read_wan_creds(creds_path, supplied)
 
     ET.SubElement(node, "if").text = w2["if"]
     ET.SubElement(node, "descr").text = w2.get("descr", "WAN2")
@@ -499,7 +514,7 @@ def _oob_gateway(seed: dict) -> ET.Element | None:
     return item
 
 
-def build_gateways(seed: dict, slot_map: dict) -> ET.Element | None:
+def build_gateways(seed: dict, slot_map: dict, supplied=None) -> ET.Element | None:
     """Emit <gateways> block — primarily for static WAN2 (Telenet).
 
     WAN1 PPPoE auto-generates dynamic gateways (WAN1_PPPOE + WAN_DHCP6) on first
@@ -514,7 +529,7 @@ def build_gateways(seed: dict, slot_map: dict) -> ET.Element | None:
         gws = ET.Element("gateways")
         gws.append(oob)
         return gws
-    creds = _read_wan_creds(w2["creds_secret"])
+    creds = _read_wan_creds(w2["creds_secret"], supplied)
     wan2_slot = slot_map.get("wan2")
     if not wan2_slot:
         raise SeedConfigError(
@@ -604,13 +619,13 @@ def build_netflow(slot_map: dict) -> ET.Element:
     return opnsense
 
 
-def _read_wan_creds(secret_path: str) -> dict:
+def _read_wan_creds(secret_path: str, supplied=None) -> dict:
     """Read static WAN credentials from a JSON secret file.
 
     Expected fields: ipv4_address, ipv4_prefix, ipv4_gateway, ipv6_address, ipv6_prefix, ipv6_gateway.
     Fails loudly if any required field is missing or empty.
     """
-    f = _read_json_fields(secret_path, "WAN secret file")
+    f = resolve_secret("wan2", secret_path, "WAN secret file", supplied)
     required = (
         "ipv4_address",
         "ipv4_prefix",
@@ -625,7 +640,7 @@ def _read_wan_creds(secret_path: str) -> dict:
     return f
 
 
-def _resolve_domain(seed: dict) -> str:
+def _resolve_domain(seed: dict, supplied=None) -> str:
     """Resolve the DNS search domain at build time.
 
     Prefer `domain_secret` (path to a JSON secret with fields.domain) so the real
@@ -634,7 +649,7 @@ def _resolve_domain(seed: dict) -> str:
     """
     secret_path = seed.get("domain_secret")
     if secret_path:
-        f = _read_json_fields(secret_path, "domain secret file")
+        f = resolve_secret("domain", secret_path, "domain secret file", supplied)
         domain = f.get("domain")
         if not domain:
             raise SeedConfigError(f"{secret_path}: missing/empty fields.domain")
@@ -657,14 +672,14 @@ def build_vlans(seed: dict) -> ET.Element:
     return vlans
 
 
-def _read_pppoe_creds(secret_path: str) -> tuple[str, str]:
+def _read_pppoe_creds(secret_path: str, supplied=None) -> tuple[str, str]:
     """Read PPPoE username/password from a JSON secret file.
 
     Expected structure: {"fields": {"pppoe_username": "...", "pppoe_password": "..."}}.
     Raises with a clear message if the secret file or fields are missing — fail loud
     rather than ship a seed with empty credentials.
     """
-    fields = _read_json_fields(secret_path, "PPPoE secret file")
+    fields = resolve_secret("pppoe", secret_path, "PPPoE secret file", supplied)
     user = fields.get("pppoe_username", "").strip()
     pw = fields.get("pppoe_password", "").strip()
     if not user or not pw:
@@ -675,7 +690,7 @@ def _read_pppoe_creds(secret_path: str) -> tuple[str, str]:
     return user, pw
 
 
-def build_ppps(seed: dict) -> ET.Element | None:
+def build_ppps(seed: dict, supplied=None) -> ET.Element | None:
     """Emit <ppps> block with one <ppp> per PPPoE link.
 
     Returns None if seed has no "wan" with a pppoe_link_interface — i.e. we don't
@@ -692,7 +707,7 @@ def build_ppps(seed: dict) -> ET.Element | None:
     secret_path = wan.get("pppoe_creds_secret")
     if not secret_path:
         raise SeedConfigError("wan.pppoe_creds_secret is required for PPPoE setup")
-    user, pw = _read_pppoe_creds(secret_path)
+    user, pw = _read_pppoe_creds(secret_path, supplied)
 
     ppps = ET.Element("ppps")
     ppp = ET.SubElement(ppps, "ppp")
@@ -742,7 +757,7 @@ def build_interfaces_settings() -> ET.Element:
 
 
 def render_config(
-    seed, baseline_xml, secret_dir, bcrypt_rounds=10, genesis_hashes=None
+    seed, baseline_xml, secret_dir, bcrypt_rounds=10, genesis_hashes=None, secrets=None
 ):
     """Render a firewall's ``config.xml`` from its seed profile.
 
@@ -754,6 +769,9 @@ def render_config(
     :param bcrypt_rounds: cost for the genesis GUI password hash
     :param genesis_hashes: pre-computed {"api", "webgui"} hashes — tests only, so a
         render is reproducible; production always hashes with a fresh salt
+    :param secrets: credentials the caller already resolved, normally from Vault, keyed
+        ``genesis`` / ``bootstrap`` / ``pppoe`` / ``wan2`` / ``domain`` / ``ldap_bind_password``.
+        Anything supplied here wins; anything missing falls back to the file the seed names.
     :returns: the rendered XML as text, secrets injected
     """
     try:
@@ -768,7 +786,7 @@ def render_config(
     if sys_node is not None:
         for tag, val in (
             ("hostname", seed["hostname"]),
-            ("domain", _resolve_domain(seed)),
+            ("domain", _resolve_domain(seed, secrets)),
             ("timezone", seed["timezone"]),
         ):
             el = sys_node.find(tag)
@@ -791,13 +809,13 @@ def render_config(
         old = root.find(tag)
         if old is not None:
             root.remove(old)
-    root.append(build_interfaces(seed))
+    root.append(build_interfaces(seed, secrets))
     root.append(build_vlans(seed))
-    ppps = build_ppps(seed)
+    ppps = build_ppps(seed, secrets)
     if ppps is not None:
         root.append(ppps)
     slot_map = compute_slot_map(seed)
-    gws = build_gateways(seed, slot_map)
+    gws = build_gateways(seed, slot_map, secrets)
     if gws is not None:
         root.append(gws)
 
@@ -824,11 +842,12 @@ def render_config(
     ET.indent(tree, space="  ")
     text = ET.tostring(root, encoding="UTF-8", xml_declaration=True).decode("utf-8")
     return _inject_genesis(
-        _inject_bootstrap_secrets(text, secret_dir),
+        _inject_bootstrap_secrets(text, secret_dir, secrets),
         seed,
         secret_dir,
         rounds=bcrypt_rounds,
         hashes=genesis_hashes,
+        supplied=secrets,
     )
 
 
