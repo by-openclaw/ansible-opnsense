@@ -746,7 +746,9 @@ def render_config(
 ):
     """Render a firewall's ``config.xml`` from its seed profile.
 
-    :param seed: the parsed seed profile (per-firewall hardware + L2/L3 truth)
+    :param seed: the parsed seed profile (per-firewall hardware + L2/L3 truth). ``dns_servers``,
+        when present, replaces the baseline's resolvers — needed where the segment a firewall
+        first boots on blocks external DNS.
     :param baseline_xml: the baseline template as text (placeholders still in it)
     :param secret_dir: directory holding the fabric secret files
     :param bcrypt_rounds: cost for the genesis GUI password hash
@@ -773,6 +775,16 @@ def render_config(
             if el is None:
                 el = ET.SubElement(sys_node, tag)
             el.text = val
+
+    # Resolvers a fresh box uses before the catalog configures its own. The baseline carries a
+    # public default, which is useless on a management segment that blocks external DNS — ours
+    # does, so a firewall seeded there cannot reach the firmware mirrors at all. A seed that
+    # names its own resolvers wins; one that says nothing keeps the baseline's.
+    if seed.get("dns_servers") and sys_node is not None:
+        for old_dns in sys_node.findall("dnsserver"):
+            sys_node.remove(old_dns)
+        for addr in seed["dns_servers"]:
+            ET.SubElement(sys_node, "dnsserver").text = str(addr)
 
     # Replace interfaces + vlans + ppps + gateways (appended after <system>)
     for tag in ("interfaces", "vlans", "ppps", "gateways"):
