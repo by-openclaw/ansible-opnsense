@@ -415,3 +415,42 @@ class TestVaultSuppliedSecrets:
             seed, BASELINE, str(secret_dir), genesis_hashes=HASHES, secrets={}
         )
         assert a == b == c
+
+
+def test_webgui_alternate_hostnames_come_from_the_seed(secret_dir: Path) -> None:
+    # System → Settings → Administration has no API on 26.x: the GUI rejects any Host header
+    # that is not the box's own name, an interface address or one of these. Seed-owned.
+    seed = _seed("minimal", secret_dir)
+    seed["webgui_althostnames"] = ["fw.example.invalid", "gw.example.invalid"]
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    webgui = root.find("system").find("webgui")
+    assert (
+        webgui.find("protocol").text == "https"
+    )  # the baseline's own setting survives
+    assert webgui.find("althostnames").text == "fw.example.invalid gw.example.invalid"
+
+
+def test_sudo_policy_comes_from_the_seed(secret_dir: Path) -> None:
+    # 1 = wheel may sudo with its password (what the bouncer play needs); absent = disabled.
+    seed = _seed("minimal", secret_dir)
+    seed["sudo_allow_wheel"] = 1
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    assert root.find("system").find("sudo_allow_wheel").text == "1"
+
+
+def test_a_seed_without_admin_knobs_keeps_the_baseline(secret_dir: Path) -> None:
+    root = ET.fromstring(
+        render_config(
+            _seed("minimal", secret_dir),
+            BASELINE,
+            str(secret_dir),
+            genesis_hashes=HASHES,
+        )
+    )
+    system = root.find("system")
+    assert system.find("webgui").find("althostnames") is None
+    assert system.find("sudo_allow_wheel") is None
