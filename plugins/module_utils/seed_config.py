@@ -804,6 +804,24 @@ def render_config(
         for addr in seed["dns_servers"]:
             ET.SubElement(sys_node, "dnsserver").text = str(addr)
 
+    # System → Settings → Administration knobs that have no API on 26.x, so the seed owns them:
+    # the WebGUI's alternate hostnames (anything else trips the DNS-rebind check) and the sudo
+    # policy for wheel (the CrowdSec bouncer key is the one file Ansible writes over SSH+become).
+    # A seed that says nothing keeps the baseline's behaviour.
+    if sys_node is not None:
+        if seed.get("webgui_althostnames"):
+            webgui = sys_node.find("webgui")
+            if webgui is None:
+                webgui = ET.SubElement(sys_node, "webgui")
+            alt = webgui.find("althostnames")
+            if alt is None:
+                alt = ET.SubElement(webgui, "althostnames")
+            alt.text = " ".join(str(h) for h in seed["webgui_althostnames"])
+        if seed.get("sudo_allow_wheel") is not None:
+            sudo = sys_node.find("sudo_allow_wheel")
+            if sudo is None:
+                sudo = ET.SubElement(sys_node, "sudo_allow_wheel")
+            sudo.text = str(seed["sudo_allow_wheel"])
     # Replace interfaces + vlans + ppps + gateways (appended after <system>)
     for tag in ("interfaces", "vlans", "ppps", "gateways"):
         old = root.find(tag)

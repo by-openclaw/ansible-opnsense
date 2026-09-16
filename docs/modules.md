@@ -703,6 +703,12 @@ A seed profile may set `dns_servers` to replace the baseline's resolvers. That m
 segment a firewall first boots on blocks external DNS — ours does, and a firewall that cannot
 resolve cannot reach the firmware mirrors. A profile that says nothing keeps the baseline's.
 
+Two System → Settings → Administration knobs have no API on 26.x, so the seed owns them as well:
+`webgui_althostnames` (list — the GUI answers only to the box's own name, an interface address or
+one of these; anything else trips the DNS-rebind check) and `sudo_allow_wheel` (`1` = wheel may
+sudo with its password, which the CrowdSec bouncer play needs for the one file it writes over
+SSH+become). A profile that says nothing keeps the baseline's behaviour (no alternates, sudo off).
+
 ### opnsense_seed_import
 
 Seed a **fresh** OPNsense VM on Proxmox VE. A freshly imaged appliance has no API, no SSH and no
