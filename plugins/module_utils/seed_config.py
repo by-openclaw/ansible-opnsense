@@ -954,6 +954,27 @@ def render_config(
             if sudo is None:
                 sudo = ET.SubElement(sys_node, "sudo_allow_wheel")
             sudo.text = str(seed["sudo_allow_wheel"])
+    # The appliance's own sshd (System → Settings → Administration, no API): the hardening
+    # baseline is a non-default port bound to the management plane only. Keys are optional so a
+    # profile that says nothing keeps the baseline's <ssh> block (port 22, every interface).
+    if sys_node is not None and (seed.get("ssh_port") or seed.get("ssh_interfaces")):
+        ssh = sys_node.find("ssh")
+        if ssh is None:
+            ssh = ET.SubElement(sys_node, "ssh")
+            ET.SubElement(ssh, "enabled").text = "enabled"
+        if seed.get("ssh_port"):
+            port = ssh.find("port")
+            if port is None:
+                port = ET.SubElement(ssh, "port")
+            port.text = str(int(seed["ssh_port"]))
+        if seed.get("ssh_interfaces"):
+            ifs = ssh.find("interfaces")
+            if ifs is None:
+                ifs = ET.SubElement(ssh, "interfaces")
+            slots = compute_slot_map(seed)
+            ifs.text = ",".join(
+                slots.get(name, name) for name in seed["ssh_interfaces"]
+            )
     # Replace interfaces + vlans + ppps + gateways (appended after <system>)
     for tag in ("interfaces", "vlans", "ppps", "gateways"):
         old = root.find(tag)

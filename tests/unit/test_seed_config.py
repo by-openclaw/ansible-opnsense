@@ -516,3 +516,24 @@ def test_a_seed_without_the_slot_leaves_the_trust_store_alone(secret_dir: Path) 
     assert root.findall("cert") == []
     assert root.find("OPNsense/AcmeClient") is None
     assert root.find("system/webgui/ssl-certref") is None
+
+
+def test_ssh_port_and_interfaces_come_from_the_seed(secret_dir: Path) -> None:
+    # The appliance sshd has no API; the hardening baseline (non-default port, management
+    # plane only) is seed-owned. Interface names resolve through the same slot map as the rest.
+    seed = _seed("minimal", secret_dir)
+    seed["ssh_port"] = 22222
+    seed["ssh_interfaces"] = ["lan"]
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    ssh = root.find("system/ssh")
+    assert ssh.findtext("port") == "22222"
+    assert ssh.findtext("interfaces") == "lan"
+    assert ssh.findtext("enabled") == "enabled"
+
+
+def test_a_seed_without_ssh_keys_keeps_the_baseline_sshd(secret_dir: Path) -> None:
+    root = _render("minimal", secret_dir)
+    ssh = root.find("system/ssh")
+    assert ssh is None or ssh.find("port") is None

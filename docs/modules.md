@@ -709,6 +709,10 @@ one of these; anything else trips the DNS-rebind check) and `sudo_allow_wheel` (
 sudo with its password, which the CrowdSec bouncer play needs for the one file it writes over
 SSH+become). A profile that says nothing keeps the baseline's behaviour (no alternates, sudo off).
 
+`ssh_port` / `ssh_interfaces` (list of seed interface names, e.g. `["lan"]` for the OOB plane) own the
+appliance's own sshd for the same reason: the hardening baseline (non-default port, management plane
+only) has no API. Absent keys keep the baseline's `<ssh>` block (port 22, every interface).
+
 `webgui_acme_fqdn` closes the last Administration gap, the GUI certificate: the seed pre-creates a
 trust-store slot (deterministic refid, self-signed placeholder for that name), points
 `system/webgui/ssl-certref` at it and adds a disabled ACME certificate object carrying that
