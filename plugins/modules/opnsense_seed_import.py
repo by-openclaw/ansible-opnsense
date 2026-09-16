@@ -171,11 +171,19 @@ def drive(console, device, timeout, settle):
 
         if sent and MARK_RESTORING in buf:
             time.sleep(settle)
-            return True, int(time.time() - started), tail.decode("utf-8", errors="replace")
+            return (
+                True,
+                int(time.time() - started),
+                tail.decode("utf-8", errors="replace"),
+            )
 
         if not sent and MARK_NO_IMPORT in buf:
             # the importer window closed and the appliance moved on to interface assignment
-            return False, int(time.time() - started), tail.decode("utf-8", errors="replace")
+            return (
+                False,
+                int(time.time() - started),
+                tail.decode("utf-8", errors="replace"),
+            )
 
         if not chunk:
             time.sleep(0.1)
@@ -203,7 +211,10 @@ def main() -> None:
     )
 
     if not HAS_WEBSOCKET:
-        module.fail_json(msg="the python 'websocket-client' library is required on the controller: %s" % WEBSOCKET_IMPORT_ERROR)
+        module.fail_json(
+            msg="the python 'websocket-client' library is required on the controller: %s"
+            % WEBSOCKET_IMPORT_ERROR
+        )
 
     p = module.params
     console = PveConsole(
@@ -245,7 +256,9 @@ def main() -> None:
     try:
         if state != "running":
             if not p["start_vm"]:
-                module.fail_json(msg="vmid %s is %s and start_vm is false" % (p["vmid"], state))
+                module.fail_json(
+                    msg="vmid %s is %s and start_vm is false" % (p["vmid"], state)
+                )
             console.start()
             # qemu needs a moment before the serial device accepts a session
             time.sleep(3)

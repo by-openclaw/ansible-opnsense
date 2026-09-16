@@ -30,6 +30,7 @@ Test flow (ordered):
 Naming convention:
     All test objects use prefix 'inttest-' to avoid collision with real config.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -52,49 +53,61 @@ class TestBadEnumValues:
     async def test_filter_bad_action(self, opn_client):
         mgr = FwFilterManager(opn_client)
         with pytest.raises(FieldValidationError, match="action"):
-            await mgr.ensure("present", {
-                "description": "inttest-bad-enum",
-                "action": "INVALID_ACTION",
-                "interface": "lan",
-                "direction": "in",
-                "protocol": "TCP",
-                "enabled": "0",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "description": "inttest-bad-enum",
+                    "action": "INVALID_ACTION",
+                    "interface": "lan",
+                    "direction": "in",
+                    "protocol": "TCP",
+                    "enabled": "0",
+                },
+            )
 
     async def test_filter_bad_direction(self, opn_client):
         mgr = FwFilterManager(opn_client)
         with pytest.raises(FieldValidationError, match="direction"):
-            await mgr.ensure("present", {
-                "description": "inttest-bad-direction",
-                "action": "pass",
-                "interface": "lan",
-                "direction": "sideways",
-                "protocol": "TCP",
-                "enabled": "0",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "description": "inttest-bad-direction",
+                    "action": "pass",
+                    "interface": "lan",
+                    "direction": "sideways",
+                    "protocol": "TCP",
+                    "enabled": "0",
+                },
+            )
 
     async def test_filter_bad_ipprotocol(self, opn_client):
         mgr = FwFilterManager(opn_client)
         with pytest.raises(FieldValidationError, match="ipprotocol"):
-            await mgr.ensure("present", {
-                "description": "inttest-bad-ipproto",
-                "action": "pass",
-                "interface": "lan",
-                "direction": "in",
-                "ipprotocol": "ipv99",
-                "protocol": "TCP",
-                "enabled": "0",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "description": "inttest-bad-ipproto",
+                    "action": "pass",
+                    "interface": "lan",
+                    "direction": "in",
+                    "ipprotocol": "ipv99",
+                    "protocol": "TCP",
+                    "enabled": "0",
+                },
+            )
 
     async def test_vip_bad_mode(self, opn_client):
         mgr = IfVipManager(opn_client)
         with pytest.raises(FieldValidationError, match="mode"):
-            await mgr.ensure("present", {
-                "address": "10.11.99.99/32",
-                "interface": "lan",
-                "mode": "invalid_mode",
-                "network": "10.11.99.99/32",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "address": "10.11.99.99/32",
+                    "interface": "lan",
+                    "mode": "invalid_mode",
+                    "network": "10.11.99.99/32",
+                },
+            )
 
 
 class TestBadBoolStrValues:
@@ -103,14 +116,17 @@ class TestBadBoolStrValues:
     async def test_filter_bad_enabled(self, opn_client):
         mgr = FwFilterManager(opn_client)
         with pytest.raises(FieldValidationError, match="enabled"):
-            await mgr.ensure("present", {
-                "description": "inttest-bad-bool",
-                "action": "pass",
-                "interface": "lan",
-                "direction": "in",
-                "protocol": "TCP",
-                "enabled": "yes",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "description": "inttest-bad-bool",
+                    "action": "pass",
+                    "interface": "lan",
+                    "direction": "in",
+                    "protocol": "TCP",
+                    "enabled": "yes",
+                },
+            )
 
 
 class TestBadIntValues:
@@ -138,28 +154,37 @@ class TestBadIpAddresses:
     async def test_kea4_reservation_bad_ip(self, opn_client):
         mgr = Kea4ReservationManager(opn_client)
         with pytest.raises(FieldValidationError, match="ip_address"):
-            await mgr.ensure("present", {
-                "ip_address": "999.999.999.999",
-                "hw_address": "00:11:22:33:44:55",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "ip_address": "999.999.999.999",
+                    "hw_address": "00:11:22:33:44:55",
+                },
+            )
 
     async def test_kea4_reservation_ipv6_in_v4(self, opn_client):
         """IPv6 address passes client-side ip validator (accepts both v4/v6)
         but server rejects it because Kea4 only accepts IPv4."""
         mgr = Kea4ReservationManager(opn_client)
         with pytest.raises(OpnsenseValidationError, match="ip_address"):
-            await mgr.ensure("present", {
-                "ip_address": "fd99::1",
-                "hw_address": "00:11:22:33:44:55",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "ip_address": "fd99::1",
+                    "hw_address": "00:11:22:33:44:55",
+                },
+            )
 
     async def test_kea4_reservation_not_ip(self, opn_client):
         mgr = Kea4ReservationManager(opn_client)
         with pytest.raises(FieldValidationError, match="ip_address"):
-            await mgr.ensure("present", {
-                "ip_address": "not-an-ip",
-                "hw_address": "00:11:22:33:44:55",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "ip_address": "not-an-ip",
+                    "hw_address": "00:11:22:33:44:55",
+                },
+            )
 
 
 class TestBadMacAddresses:
@@ -168,18 +193,24 @@ class TestBadMacAddresses:
     async def test_kea4_reservation_bad_mac(self, opn_client):
         mgr = Kea4ReservationManager(opn_client)
         with pytest.raises(FieldValidationError, match="hw_address"):
-            await mgr.ensure("present", {
-                "ip_address": "10.99.0.50",
-                "hw_address": "XX:YY:ZZ:11:22:33",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "ip_address": "10.99.0.50",
+                    "hw_address": "XX:YY:ZZ:11:22:33",
+                },
+            )
 
     async def test_kea4_reservation_short_mac(self, opn_client):
         mgr = Kea4ReservationManager(opn_client)
         with pytest.raises(FieldValidationError, match="hw_address"):
-            await mgr.ensure("present", {
-                "ip_address": "10.99.0.50",
-                "hw_address": "00:11:22",
-            })
+            await mgr.ensure(
+                "present",
+                {
+                    "ip_address": "10.99.0.50",
+                    "hw_address": "00:11:22",
+                },
+            )
 
 
 class TestRequiredFieldMissing:
@@ -207,10 +238,13 @@ class TestBadStateParam:
     async def test_invalid_state(self, opn_client):
         mgr = FwFilterManager(opn_client)
         with pytest.raises(ValueError, match="state"):
-            await mgr.ensure("invalid", {
-                "description": "inttest-bad-state",
-                "action": "pass",
-                "interface": "lan",
-                "direction": "in",
-                "protocol": "TCP",
-            })
+            await mgr.ensure(
+                "invalid",
+                {
+                    "description": "inttest-bad-state",
+                    "action": "pass",
+                    "interface": "lan",
+                    "direction": "in",
+                    "protocol": "TCP",
+                },
+            )

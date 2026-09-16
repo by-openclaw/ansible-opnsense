@@ -152,11 +152,31 @@ except ImportError:
     from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
-_BOOL_FIELDS = ('enabled', 'http_opn_autodiscovery')
-_STR_FIELDS = ('name', 'description', 'method', 'http_service', 'http_opn_interface', 'http_opn_ipaddresses', 'dns_service', 'dns_sleep', 'dns_cf_email', 'dns_cf_key', 'dns_cf_token', 'dns_cf_account_id', 'dns_cf_zone_id')
-_ENUMS = {'method': ['http01', 'dns01', 'tlsalpn01'], 'http_service': ['opnsense', 'haproxy']}
-_REQUIRED = ('name',)
-_NO_LOG = ('dns_cf_key', 'dns_cf_token')  # pragma: allowlist secret (field NAMES, not values)
+_BOOL_FIELDS = ("enabled", "http_opn_autodiscovery")
+_STR_FIELDS = (
+    "name",
+    "description",
+    "method",
+    "http_service",
+    "http_opn_interface",
+    "http_opn_ipaddresses",
+    "dns_service",
+    "dns_sleep",
+    "dns_cf_email",
+    "dns_cf_key",
+    "dns_cf_token",
+    "dns_cf_account_id",
+    "dns_cf_zone_id",
+)
+_ENUMS = {
+    "method": ["http01", "dns01", "tlsalpn01"],
+    "http_service": ["opnsense", "haproxy"],
+}
+_REQUIRED = ("name",)
+_NO_LOG = (
+    "dns_cf_key",
+    "dns_cf_token",
+)  # pragma: allowlist secret (field NAMES, not values)
 
 
 def main() -> None:
@@ -174,7 +194,15 @@ def main() -> None:
             for f in _STR_FIELDS
         }
     )
-    spec.update({"state": {"type": "str", "choices": ['present', 'absent'], "default": "present"}})
+    spec.update(
+        {
+            "state": {
+                "type": "str",
+                "choices": ["present", "absent"],
+                "default": "present",
+            }
+        }
+    )
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
     # Match key always; other options only when set, so an unset option leaves that

@@ -172,9 +172,25 @@ except ImportError:
     from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
-_BOOL_FIELDS = ('ocsp', 'auto_renewal', 'enabled')
-_STR_FIELDS = ('name', 'description', 'alt_names', 'account', 'validation_method', 'key_length', 'profile', 'restart_actions', 'renew_interval', 'aliasmode', 'domainalias', 'challengealias')
-_ENUMS = {'key_length': ['key_2048', 'key_3072', 'key_4096', 'key_ec256', 'key_ec384'], 'aliasmode': ['none', 'automatic', 'domain', 'challenge']}
+_BOOL_FIELDS = ("ocsp", "auto_renewal", "enabled")
+_STR_FIELDS = (
+    "name",
+    "description",
+    "alt_names",
+    "account",
+    "validation_method",
+    "key_length",
+    "profile",
+    "restart_actions",
+    "renew_interval",
+    "aliasmode",
+    "domainalias",
+    "challengealias",
+)
+_ENUMS = {
+    "key_length": ["key_2048", "key_3072", "key_4096", "key_ec256", "key_ec384"],
+    "aliasmode": ["none", "automatic", "domain", "challenge"],
+}
 _API_NAMES = {
     "alt_names": "altNames",
     "validation_method": "validationMethod",
@@ -183,7 +199,7 @@ _API_NAMES = {
     "auto_renewal": "autoRenewal",
     "renew_interval": "renewInterval",
 }
-_REQUIRED = ('name',)
+_REQUIRED = ("name",)
 _NO_LOG = ()  # pragma: allowlist secret (field NAMES, not values)
 
 
@@ -202,7 +218,15 @@ def main() -> None:
             for f in _STR_FIELDS
         }
     )
-    spec.update({"state": {"type": "str", "choices": ['present', 'absent', 'issued'], "default": "present"}})
+    spec.update(
+        {
+            "state": {
+                "type": "str",
+                "choices": ["present", "absent", "issued"],
+                "default": "present",
+            }
+        }
+    )
     spec.update({"renew": {"type": "bool", "default": False}})
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
@@ -218,7 +242,12 @@ def main() -> None:
 
     from opnsense.managers.acme.certificates import AcmeCertificateManager
 
-    run_module(module, AcmeCertificateManager, params, ensure_kwargs={"renew": bool(module.params.get("renew"))})
+    run_module(
+        module,
+        AcmeCertificateManager,
+        params,
+        ensure_kwargs={"renew": bool(module.params.get("renew"))},
+    )
 
 
 if __name__ == "__main__":

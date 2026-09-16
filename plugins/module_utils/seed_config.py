@@ -24,8 +24,11 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import base64
+import hashlib
 import json
 import os
+import uuid
 import xml.etree.ElementTree as ET
 
 
@@ -756,6 +759,135 @@ def build_interfaces_settings() -> ET.Element:
     return ifs
 
 
+def _self_signed_placeholder(fqdn, days=825):
+    """A throw-away self-signed certificate for ``fqdn`` so the WebGUI has something valid to serve
+    until the ACME client replaces it in place. RSA 2048 (lighttpd-safe everywhere)."""
+    try:
+        import datetime
+
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.x509.oid import NameOID
+    except (
+        ImportError
+    ) as exc:  # pragma: no cover — the controller always ships cryptography
+        raise SeedConfigError(
+            "webgui_acme_fqdn needs the 'cryptography' package: %s" % exc
+        )
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, fqdn)])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(minutes=5))
+        .not_valid_after(now + datetime.timedelta(days=days))
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(fqdn)]), critical=False
+        )
+        .sign(key, hashes.SHA256())
+    )
+    crt_pem = cert.public_bytes(serialization.Encoding.PEM)
+    key_pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.NoEncryption(),
+    )
+    return crt_pem, key_pem
+
+
+def webgui_certificate_refid(fqdn):
+    """Deterministic trust-store refid for the WebGUI certificate slot (13 hex chars, the
+    uniqid() shape OPNsense uses). Stable across re-seeds so every consumer can find it."""
+    return hashlib.sha1(fqdn.encode("utf-8")).hexdigest()[:13]  # nosec B324 — an id, not a secret
+
+
+def build_webgui_certificate(root, seed):
+    """Bind the WebGUI to the certificate the ACME client will issue — before it exists.
+
+    System → Settings → Administration has no API, so the choice of GUI certificate is
+    seed-owned. The trick: the ACME plugin reuses an existing trust-store refid when its
+    certificate object already carries it (``LeCertificate::import``, verified on 26.7).
+    So the seed pre-creates (1) a trust-store entry under a deterministic refid holding a
+    self-signed placeholder for ``fqdn``, (2) ``system/webgui/ssl-certref`` pointing at it,
+    and (3) a DISABLED ACME certificate object named ``fqdn`` with ``certRefId`` = that
+    refid. The catalog then enables/completes the object and issues it; the leaf lands in
+    the same slot and the GUI serves it. Re-runs: the catalog sees an issued, unchanged
+    object and does nothing.
+    """
+    fqdn = str(seed.get("webgui_acme_fqdn", "") or "").strip()
+    if not fqdn:
+        return
+    refid = webgui_certificate_refid(fqdn)
+    crt_pem, key_pem = _self_signed_placeholder(fqdn)
+    # (1) trust store entry
+    for old in root.findall("cert"):
+        if (old.findtext("refid") or "") == refid:
+            root.remove(old)
+    cert = ET.SubElement(root, "cert")
+    ET.SubElement(cert, "refid").text = refid
+    ET.SubElement(cert, "descr").text = "%s (ACME Client)" % fqdn
+    ET.SubElement(cert, "crt").text = base64.b64encode(crt_pem).decode("ascii")
+    ET.SubElement(cert, "csr").text = ""
+    ET.SubElement(cert, "prv").text = base64.b64encode(key_pem).decode("ascii")
+    # (2) the GUI serves that slot
+    sys_node = root.find("system")
+    webgui = sys_node.find("webgui")
+    if webgui is None:
+        webgui = ET.SubElement(sys_node, "webgui")
+    certref = webgui.find("ssl-certref")
+    if certref is None:
+        certref = ET.SubElement(webgui, "ssl-certref")
+    certref.text = refid
+    # (3) the ACME certificate object, disabled until the catalog completes it
+    opn = root.find("OPNsense")
+    if opn is None:
+        opn = ET.SubElement(root, "OPNsense")
+    acme = opn.find("AcmeClient")
+    if acme is None:
+        acme = ET.SubElement(opn, "AcmeClient")
+    certs = acme.find("certificates")
+    if certs is None:
+        certs = ET.SubElement(acme, "certificates")
+    for old in list(certs):
+        if (old.findtext("name") or "") == fqdn:
+            certs.remove(old)
+    obj = ET.SubElement(
+        certs, "certificate", uuid=str(uuid.uuid5(uuid.NAMESPACE_DNS, fqdn))
+    )
+    fields = [
+        ("id", uuid.uuid5(uuid.NAMESPACE_DNS, fqdn).hex[:14]),
+        ("enabled", "0"),
+        ("name", fqdn),
+        (
+            "description",
+            "WebGUI certificate — slot seeded, issued by the catalog (opn_acme)",
+        ),
+        ("altNames", ""),
+        ("account", ""),
+        ("validationMethod", ""),
+        ("keyLength", "key_4096"),
+        ("ocsp", "0"),
+        ("profile", ""),
+        ("restartActions", ""),
+        ("autoRenewal", "1"),
+        ("renewInterval", "60"),
+        ("aliasmode", "none"),
+        ("domainalias", ""),
+        ("challengealias", ""),
+        ("certRefId", refid),
+        ("lastUpdate", ""),
+        ("statusCode", ""),
+        ("statusLastUpdate", ""),
+    ]
+    for tag, val in fields:
+        ET.SubElement(obj, tag).text = val
+
+
 def render_config(
     seed, baseline_xml, secret_dir, bcrypt_rounds=10, genesis_hashes=None, secrets=None
 ):
@@ -857,6 +989,8 @@ def render_config(
         opnsense_node.remove(old_ifs)
     opnsense_node.append(build_interfaces_settings())
 
+    # WebGUI certificate slot (seed-owned, see build_webgui_certificate)
+    build_webgui_certificate(root, seed)
     ET.indent(tree, space="  ")
     text = ET.tostring(root, encoding="UTF-8", xml_declaration=True).decode("utf-8")
     return _inject_genesis(

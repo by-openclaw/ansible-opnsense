@@ -86,7 +86,9 @@ def test_times_out_without_the_restore_marker():
     assert elapsed >= 1
 
 
-@pytest.mark.parametrize("prompt", [b"Select device to import from", b"or leave blank to exit"])
+@pytest.mark.parametrize(
+    "prompt", [b"Select device to import from", b"or leave blank to exit"]
+)
 def test_accepts_either_half_of_the_device_prompt(prompt):
     c = FakeConsole([IMPORTER, prompt, RESTORE])
     imported, _, _ = drive(c, "vtbd1", timeout=5, settle=0)

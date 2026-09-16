@@ -454,3 +454,65 @@ def test_a_seed_without_admin_knobs_keeps_the_baseline(secret_dir: Path) -> None
     system = root.find("system")
     assert system.find("webgui").find("althostnames") is None
     assert system.find("sudo_allow_wheel") is None
+
+
+def test_webgui_certificate_slot_binds_gui_acme_and_trust_store(
+    secret_dir: Path,
+) -> None:
+    # No API for the GUI certificate on 26.x: the seed pre-creates the slot the ACME client will
+    # fill in place. Three artefacts must agree on one deterministic refid.
+    import base64
+
+    from cryptography import x509
+
+    from plugins.module_utils.seed_config import webgui_certificate_refid
+
+    seed = _seed("minimal", secret_dir)
+    seed["webgui_acme_fqdn"] = "fw.example.invalid"
+    root = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    refid = webgui_certificate_refid("fw.example.invalid")
+    assert len(refid) == 13
+    slots = [c for c in root.findall("cert") if c.findtext("refid") == refid]
+    assert len(slots) == 1
+    assert slots[0].findtext("descr") == "fw.example.invalid (ACME Client)"
+    pem = base64.b64decode(slots[0].findtext("crt"))
+    cert = x509.load_pem_x509_certificate(pem)
+    assert cert.subject.rfc4514_string() == "CN=fw.example.invalid"
+    assert base64.b64decode(slots[0].findtext("prv")).startswith(b"-----BEGIN")
+    assert root.find("system/webgui/ssl-certref").text == refid
+    obj = root.find("OPNsense/AcmeClient/certificates/certificate")
+    assert obj.findtext("name") == "fw.example.invalid"
+    assert obj.findtext("certRefId") == refid
+    assert obj.findtext("enabled") == "0"  # the catalog enables + issues it
+    assert obj.findtext("keyLength") == "key_4096"
+    assert obj.get("uuid") == str(
+        __import__("uuid").uuid5(__import__("uuid").NAMESPACE_DNS, "fw.example.invalid")
+    )
+
+
+def test_webgui_certificate_slot_is_stable_across_renders(secret_dir: Path) -> None:
+    seed = _seed("minimal", secret_dir)
+    seed["webgui_acme_fqdn"] = "fw.example.invalid"
+    a = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    b = ET.fromstring(
+        render_config(seed, BASELINE, str(secret_dir), genesis_hashes=HASHES)
+    )
+    # the placeholder key is fresh each render; the identifiers every consumer relies on are not
+    assert (
+        a.find("system/webgui/ssl-certref").text
+        == b.find("system/webgui/ssl-certref").text
+    )
+    assert a.find("OPNsense/AcmeClient/certificates/certificate").get("uuid") == b.find(
+        "OPNsense/AcmeClient/certificates/certificate"
+    ).get("uuid")
+
+
+def test_a_seed_without_the_slot_leaves_the_trust_store_alone(secret_dir: Path) -> None:
+    root = _render("minimal", secret_dir)
+    assert root.findall("cert") == []
+    assert root.find("OPNsense/AcmeClient") is None
+    assert root.find("system/webgui/ssl-certref") is None

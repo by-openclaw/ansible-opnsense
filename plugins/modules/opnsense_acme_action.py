@@ -152,11 +152,34 @@ except ImportError:
     from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
-_BOOL_FIELDS = ('enabled',)
-_STR_FIELDS = ('name', 'description', 'type', 'configd_generic_command', 'sftp_host', 'sftp_host_key', 'sftp_port', 'sftp_user', 'sftp_identity_type', 'sftp_remote_path', 'remote_ssh_host', 'remote_ssh_host_key', 'remote_ssh_port', 'remote_ssh_user', 'remote_ssh_identity_type', 'remote_ssh_command')
-_ENUMS = {'sftp_identity_type': ['ecdsa', 'rsa', 'ed25519'], 'remote_ssh_identity_type': ['ecdsa', 'rsa', 'ed25519']}
-_REQUIRED = ('name',)
-_NO_LOG = ('sftp_host_key', 'remote_ssh_host_key')  # pragma: allowlist secret (field NAMES, not values)
+_BOOL_FIELDS = ("enabled",)
+_STR_FIELDS = (
+    "name",
+    "description",
+    "type",
+    "configd_generic_command",
+    "sftp_host",
+    "sftp_host_key",
+    "sftp_port",
+    "sftp_user",
+    "sftp_identity_type",
+    "sftp_remote_path",
+    "remote_ssh_host",
+    "remote_ssh_host_key",
+    "remote_ssh_port",
+    "remote_ssh_user",
+    "remote_ssh_identity_type",
+    "remote_ssh_command",
+)
+_ENUMS = {
+    "sftp_identity_type": ["ecdsa", "rsa", "ed25519"],
+    "remote_ssh_identity_type": ["ecdsa", "rsa", "ed25519"],
+}
+_REQUIRED = ("name",)
+_NO_LOG = (
+    "sftp_host_key",
+    "remote_ssh_host_key",
+)  # pragma: allowlist secret (field NAMES, not values)
 
 
 def main() -> None:
@@ -174,7 +197,15 @@ def main() -> None:
             for f in _STR_FIELDS
         }
     )
-    spec.update({"state": {"type": "str", "choices": ['present', 'absent'], "default": "present"}})
+    spec.update(
+        {
+            "state": {
+                "type": "str",
+                "choices": ["present", "absent"],
+                "default": "present",
+            }
+        }
+    )
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
     # Match key always; other options only when set, so an unset option leaves that
