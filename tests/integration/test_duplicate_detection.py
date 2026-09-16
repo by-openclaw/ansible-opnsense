@@ -16,6 +16,7 @@ Test flow (ordered):
 Naming convention:
     All test objects use prefix 'inttest-ansible-dup' to avoid collision with real config.
 """
+
 from __future__ import annotations
 
 import pytest

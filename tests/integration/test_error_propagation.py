@@ -23,6 +23,7 @@ Test flow (ordered):
 Naming convention:
     All test objects use prefix 'inttest-' to avoid collision with real config.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -32,7 +33,9 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "plugins", "module_utils"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "..", "plugins", "module_utils")
+)
 from opnsense_helper import _handle_opnsense_error  # noqa: E402
 from opnsense.exceptions import (
     AmbiguousMatchError,
@@ -67,7 +70,9 @@ class TestErrorMapping:
     def test_validation_error_400(self):
         module = self._mock_module()
         exc = OpnsenseValidationError(
-            "test", endpoint="fw/filter", validations={"rule.name": "required"},
+            "test",
+            endpoint="fw/filter",
+            validations={"rule.name": "required"},
         )
         with pytest.raises(SystemExit):
             _handle_opnsense_error(module, exc)

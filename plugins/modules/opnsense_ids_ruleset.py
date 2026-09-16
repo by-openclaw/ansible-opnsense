@@ -107,7 +107,7 @@ try:
         run_module,
     )
 except ImportError:
-    from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
+    from plugins.module_utils.opnsense_helper import opn_argument_spec
 
 
 def main() -> None:

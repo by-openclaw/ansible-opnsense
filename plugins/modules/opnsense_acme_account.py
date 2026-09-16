@@ -130,11 +130,23 @@ except ImportError:
     from plugins.module_utils.opnsense_helper import opn_argument_spec, run_module
 
 
-_BOOL_FIELDS = ('enabled',)
-_STR_FIELDS = ('name', 'description', 'email', 'ca', 'custom_ca', 'eab_kid', 'eab_hmac')
-_ENUMS = {'ca': ['letsencrypt', 'letsencrypt_test', 'buypass', 'buypass_test', 'google', 'google_test', 'sslcom', 'zerossl', 'custom']}
-_REQUIRED = ('name',)
-_NO_LOG = ('eab_kid', 'eab_hmac')  # pragma: allowlist secret (field NAMES, not values)
+_BOOL_FIELDS = ("enabled",)
+_STR_FIELDS = ("name", "description", "email", "ca", "custom_ca", "eab_kid", "eab_hmac")
+_ENUMS = {
+    "ca": [
+        "letsencrypt",
+        "letsencrypt_test",
+        "buypass",
+        "buypass_test",
+        "google",
+        "google_test",
+        "sslcom",
+        "zerossl",
+        "custom",
+    ]
+}
+_REQUIRED = ("name",)
+_NO_LOG = ("eab_kid", "eab_hmac")  # pragma: allowlist secret (field NAMES, not values)
 
 
 def main() -> None:
@@ -152,7 +164,15 @@ def main() -> None:
             for f in _STR_FIELDS
         }
     )
-    spec.update({"state": {"type": "str", "choices": ['present', 'absent', 'registered'], "default": "present"}})
+    spec.update(
+        {
+            "state": {
+                "type": "str",
+                "choices": ["present", "absent", "registered"],
+                "default": "present",
+            }
+        }
+    )
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
     # Match key always; other options only when set, so an unset option leaves that

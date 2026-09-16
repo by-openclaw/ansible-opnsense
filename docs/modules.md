@@ -709,6 +709,13 @@ one of these; anything else trips the DNS-rebind check) and `sudo_allow_wheel` (
 sudo with its password, which the CrowdSec bouncer play needs for the one file it writes over
 SSH+become). A profile that says nothing keeps the baseline's behaviour (no alternates, sudo off).
 
+`webgui_acme_fqdn` closes the last Administration gap, the GUI certificate: the seed pre-creates a
+trust-store slot (deterministic refid, self-signed placeholder for that name), points
+`system/webgui/ssl-certref` at it and adds a disabled ACME certificate object carrying that
+`certRefId`. The catalog (`opn_acme`) enables and issues it; the plugin reuses an existing refid
+(`LeCertificate::import`), so the leaf lands in the slot the GUI already serves. Idempotent from
+then on: an issued, unchanged object is a noop.
+
 ### opnsense_seed_import
 
 Seed a **fresh** OPNsense VM on Proxmox VE. A freshly imaged appliance has no API, no SSH and no

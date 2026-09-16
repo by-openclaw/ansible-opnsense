@@ -133,8 +133,17 @@ except ImportError:
 
 
 _BOOL_FIELDS = ("enabled", "auto_renewal", "haproxy_integration", "show_intro")
-_STR_FIELDS = ("environment", "challenge_port", "tls_challenge_port", "restart_timeout", "log_level")
-_ENUMS = {"environment": ["", "prod", "stg"], "log_level": ["normal", "extended", "debug", "debug2", "debug3"]}
+_STR_FIELDS = (
+    "environment",
+    "challenge_port",
+    "tls_challenge_port",
+    "restart_timeout",
+    "log_level",
+)
+_ENUMS = {
+    "environment": ["", "prod", "stg"],
+    "log_level": ["normal", "extended", "debug", "debug2", "debug3"],
+}
 _API_NAMES = {
     "auto_renewal": "autoRenewal",
     "challenge_port": "challengePort",
@@ -151,9 +160,14 @@ def main() -> None:
     spec = opn_argument_spec()
     spec.update({f: {"type": "bool"} for f in _BOOL_FIELDS})
     spec.update(
-        {f: {"type": "str", **({"choices": _ENUMS[f]} if f in _ENUMS else {})} for f in _STR_FIELDS}
+        {
+            f: {"type": "str", **({"choices": _ENUMS[f]} if f in _ENUMS else {})}
+            for f in _STR_FIELDS
+        }
     )
-    spec.update({"state": {"type": "str", "choices": ["present"], "default": "present"}})
+    spec.update(
+        {"state": {"type": "str", "choices": ["present"], "default": "present"}}
+    )
     spec.update({"cron": {"type": "bool", "default": False}})
     module = AnsibleModule(argument_spec=spec, supports_check_mode=True)
 
@@ -167,7 +181,12 @@ def main() -> None:
 
     from opnsense.managers.acme.settings import AcmeSettingsManager
 
-    run_module(module, AcmeSettingsManager, params, ensure_kwargs={"cron": bool(module.params.get("cron"))})
+    run_module(
+        module,
+        AcmeSettingsManager,
+        params,
+        ensure_kwargs={"cron": bool(module.params.get("cron"))},
+    )
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Repo: https://github.com/by-openclaw/ansible-opnsense
 """Ansible integration test fixtures — requires live OPNsense device."""
+
 from __future__ import annotations
 
 import os
