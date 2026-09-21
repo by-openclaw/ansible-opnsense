@@ -678,7 +678,8 @@ def build_vlans(seed: dict) -> ET.Element:
 def _read_pppoe_creds(secret_path: str, supplied=None) -> tuple[str, str]:
     """Read PPPoE username/password from a JSON secret file.
 
-    Expected structure: {"fields": {"pppoe_username": "...", "pppoe_password": "..."}}.
+    Expected structure: {"fields": {"pppoe_username": "...", "pppoe_password": "..."}},
+    the password RAW (as the ISP issued it — the renderer encodes it for config.xml).
     Raises with a clear message if the secret file or fields are missing — fail loud
     rather than ship a seed with empty credentials.
     """
@@ -698,6 +699,11 @@ def build_ppps(seed: dict, supplied=None) -> ET.Element | None:
 
     Returns None if seed has no "wan" with a pppoe_link_interface — i.e. we don't
     emit an empty <ppps> block on non-PPPoE seeds.
+
+    The secret store holds the RAW password the ISP issued; OPNsense keeps the element
+    base64-encoded (``interfaces_ppps_edit.php`` encodes on save, ``interfaces.inc``
+    ``base64_decode``s it into the mpd ``set auth password`` line). Writing the raw value
+    here dials with garbage and CHAP is rejected — the renderer encodes (ansible-opnsense#40).
     """
     wan = seed.get("wan")
     if not wan or wan.get("ipv4") != "pppoe":
@@ -719,7 +725,7 @@ def build_ppps(seed: dict, supplied=None) -> ET.Element | None:
     ET.SubElement(ppp, "if").text = wan.get("if", "pppoe0")
     ET.SubElement(ppp, "ports").text = link_if
     ET.SubElement(ppp, "username").text = user
-    ET.SubElement(ppp, "password").text = pw
+    ET.SubElement(ppp, "password").text = base64.b64encode(pw.encode()).decode()
     ET.SubElement(ppp, "provider").text = wan.get("pppoe_service_name", "")
     ET.SubElement(ppp, "mtu").text = str(wan.get("mtu", 1492))
     ET.SubElement(ppp, "mru").text = str(wan.get("mtu", 1492))

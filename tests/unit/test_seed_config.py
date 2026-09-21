@@ -11,6 +11,7 @@ firewall identity, no real secrets.
 
 from __future__ import annotations
 
+import base64
 import json
 import sys
 import xml.etree.ElementTree as ET
@@ -213,6 +214,18 @@ def test_pppoe_credentials_come_from_the_secret_store(secret_dir: Path) -> None:
     assert ppp.find("mtu").text == "1492"
 
 
+def test_pppoe_password_is_stored_base64_encoded_as_opnsense_reads_it(
+    secret_dir: Path,
+) -> None:
+    # interfaces.inc base64_decode()s <password> into the mpd config: a raw value in
+    # config.xml dials with garbage (ansible-opnsense#40). The store holds the raw one.
+    ppp = _render("full", secret_dir).find("ppps/ppp")
+    assert ppp.find("password").text != "pppoepw"  # pragma: allowlist secret
+    assert (
+        base64.b64decode(ppp.find("password").text).decode() == "pppoepw"
+    )  # pragma: allowlist secret
+
+
 def test_netflow_captures_every_slot_except_the_fabric(secret_dir: Path) -> None:
     slots = compute_slot_map(_seed("full", secret_dir))
     capture = build_netflow(slots).find("Netflow/capture")
@@ -347,6 +360,9 @@ class TestVaultSuppliedSecrets:
             )
         )
         assert root.findtext("ppps/ppp/username") == "from-vault@isp"
+        assert (
+            base64.b64decode(root.findtext("ppps/ppp/password")).decode() == "vault-pw"
+        )  # pragma: allowlist secret
 
     def test_supplied_static_wan_wins_over_the_file(self, secret_dir: Path) -> None:
         seed = _seed("full", secret_dir)
