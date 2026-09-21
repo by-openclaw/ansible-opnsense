@@ -191,7 +191,16 @@ def main() -> None:
 
     from opnsense.managers.auth.user import AuthUserManager
 
-    run_module(module, AuthUserManager, params)
+    # force_update: the API never returns the password, so an existing user's password is
+
+    # only rewritten when the caller says so (explicit rotation; changed on every run).
+
+    run_module(
+        module,
+        AuthUserManager,
+        params,
+        ensure_kwargs={"force_update": bool(module.params["force_update"])},
+    )
 
 
 if __name__ == "__main__":
