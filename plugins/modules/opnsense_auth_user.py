@@ -63,9 +63,16 @@ options:
     type: str
     default: ""
   password:
-    description: User password. Only used on create or explicit update.
+    description: User password. Only used on create, or when force_update is true.
     type: str
     no_log: true
+  force_update:
+    description:
+      - Send the update even when no comparable field differs.
+      - The API never returns the password, so an existing user's password is only rewritten
+        with this flag (explicit rotation). Reports changed on every run; never a default.
+    type: bool
+    default: false
   group_memberships:
     description: >
       Comma-separated list of group GIDs to assign the user to.
@@ -157,6 +164,7 @@ def main() -> None:
             "email": {"type": "str", "default": ""},
             "description": {"type": "str", "default": ""},
             "password": {"type": "str", "no_log": True, "default": None},
+            "force_update": {"type": "bool", "default": False},
             "group_memberships": {"type": "str", "default": ""},
             "disabled": {"type": "bool", "default": False},
             "state": {
