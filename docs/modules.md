@@ -1408,3 +1408,6 @@ Manage remote syslog destinations.
 | `action` | str | `created`, `updated`, `deleted`, or `noop` |
 | `uuid` | str | Resource UUID (when available) |
 | `diff` | dict | Before/after state (when changed) |
+| `program` | str | no | "" | Comma-separated programs to forward (empty = all) |
+| `level` | str | no | "" | Comma-separated log levels (empty = all) |
+| `facility` | str | no | "" | Comma-separated facilities (empty = all) |
