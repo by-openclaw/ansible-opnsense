@@ -350,6 +350,7 @@ Manage Unbound local DNS host overrides (A/AAAA/MX/TXT).
 | `ttl` | str | no | "" | TTL override |
 | `txtdata` | str | no | "" | TXT record data |
 | `enabled` | bool | no | true | Enable the override |
+| `addptr` | bool | no | true | Emit the PTR for the address from this override (OPNsense writes one PTR per address, first override wins — set false on service aliases) |
 | `description` | str | no | "" | Override description |
 | `state` | str | no | present | `present` or `absent` |
 
