@@ -87,6 +87,14 @@ options:
     description: Whether the host override is enabled.
     type: bool
     default: true
+  addptr:
+    description:
+      - >
+        Emit a PTR record for the address from this override. OPNsense writes ONE PTR per address,
+        taken from the first enabled override that asks for it (later ones only log "PTR record
+        already exists"). Set it false on service aliases so the asset FQDN owns the PTR.
+    type: bool
+    default: true
   description:
     description: Host override description.
     type: str
@@ -185,6 +193,7 @@ def main() -> None:
             "ttl": {"type": "str", "default": ""},
             "txtdata": {"type": "str", "default": ""},
             "enabled": {"type": "bool", "default": True},
+            "addptr": {"type": "bool", "default": True},
             "description": {"type": "str", "default": ""},
             "state": {
                 "type": "str",
@@ -202,6 +211,7 @@ def main() -> None:
         "server": module.params["server"],
         "rr": module.params["rr"],
         "enabled": "1" if module.params["enabled"] else "0",
+        "addptr": "1" if module.params["addptr"] else "0",
     }
     if module.params["mxprio"]:
         params["mxprio"] = module.params["mxprio"]
