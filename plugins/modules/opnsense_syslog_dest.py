@@ -75,6 +75,22 @@ options:
     description: Use RFC 5424 syslog format (instead of BSD/RFC 3164).
     type: bool
     default: false
+  program:
+    description:
+      - >
+        Only forward log lines of these programs (comma-separated, e.g. C(suricata)). Empty = every
+        program. A destination that exists for one consumer (an IDS feed) should name it: everything
+        else is noise for the receiver and, on a UDP socket, can crowd out the lines that matter.
+    type: str
+    default: ""
+  level:
+    description: Only forward these log levels (comma-separated, OPNsense names). Empty = all.
+    type: str
+    default: ""
+  facility:
+    description: Only forward these facilities (comma-separated). Empty = all.
+    type: str
+    default: ""
   certificate:
     description: TLS certificate UUID for encrypted transport.
     type: str
@@ -168,6 +184,9 @@ def main() -> None:
             "syslog_port": {"type": "str", "default": "514"},
             "rfc5424": {"type": "bool", "default": False},
             "certificate": {"type": "str", "default": ""},
+            "program": {"type": "str", "default": ""},
+            "level": {"type": "str", "default": ""},
+            "facility": {"type": "str", "default": ""},
             "state": {
                 "type": "str",
                 "choices": ["present", "absent"],
@@ -188,6 +207,10 @@ def main() -> None:
     }
     if module.params["certificate"]:
         params["certificate"] = module.params["certificate"]
+    # filters are part of the desired state: an empty string means "every program/level/facility",
+    # so they are always sent and an undeclared filter is reconciled back to empty
+    for f in ("program", "level", "facility"):
+        params[f] = module.params[f]
 
     from opnsense.managers.services.syslog_dest import SyslogDestManager
 
