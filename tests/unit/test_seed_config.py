@@ -23,7 +23,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from plugins.module_utils.seed_config import (  # noqa: E402
     SeedConfigError,
-    build_netflow,
     compute_slot_map,
     redact,
     render_config,
@@ -226,11 +225,10 @@ def test_pppoe_password_is_stored_base64_encoded_as_opnsense_reads_it(
     )  # pragma: allowlist secret
 
 
-def test_netflow_captures_every_slot_except_the_fabric(secret_dir: Path) -> None:
-    slots = compute_slot_map(_seed("full", secret_dir))
-    capture = build_netflow(slots).find("Netflow/capture")
-    assert capture.find("interfaces").text == "lan,opt1,opt2,opt3,opt4,opt5"
-    assert capture.find("egress_only").text == "opt4,opt5"
+def test_netflow_is_not_seeded(secret_dir: Path) -> None:
+    """The capture configuration is declared through the API (26.7.5+), not by the seed."""
+    for profile in ("minimal", "full"):
+        assert _render(profile, secret_dir).find("OPNsense/Netflow") is None
 
 
 def test_ipv6_is_explicitly_allowed(secret_dir: Path) -> None:

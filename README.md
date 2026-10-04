@@ -143,6 +143,7 @@ ansible-opnsense/
 | `opnsense_core_service` | Start / stop / restart a registered daemon by name (core/service — legacy daemons such as ntpd) |
 | `opnsense_ddns_service` | Start / stop / restart / reconfigure the Dynamic DNS (os-ddclient) service |
 | `opnsense_netflow_service` | Reconfigure the NetFlow / Insight exporter |
+| `opnsense_netflow_settings` | Manage the NetFlow / Insight capture and collection settings |
 | `opnsense_monit_settings` | Manage Monit general settings (SMTP alerting, HTTP interface, M/Monit) |
 | `opnsense_monit_alert` | CRUD Monit alert recipients |
 | `opnsense_monit_test` | CRUD Monit tests (conditions) |

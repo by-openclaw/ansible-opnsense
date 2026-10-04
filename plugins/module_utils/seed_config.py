@@ -467,7 +467,7 @@ def _wan2(node: ET.Element, w2: dict, supplied=None) -> None:
 def compute_slot_map(seed: dict) -> dict:
     """Return a mapping from logical role → OPNsense slot identifier (lan|optN).
 
-    Mirrors build_interfaces() so other generators (gateways, NAT, NetFlow) can
+    Mirrors build_interfaces() so other generators (gateways, NAT) can
     reference the correct slot. Layout matches the LIVE FW + ansible catalog
     (verified 2026-06-13): trunk=opt1, VLANs=opt2..optN, then the WANs last —
     Proximus=opt12, Telenet=opt13. The ansible MVC catalog assigns rules/VLANs by
@@ -573,53 +573,6 @@ def build_gateways(seed: dict, slot_map: dict, supplied=None) -> ET.Element | No
         gws.append(oob)
 
     return gws
-
-
-def build_netflow(slot_map: dict) -> ET.Element:
-    """Emit <OPNsense><Netflow> so a fresh seed boots with NetFlow/Insight active.
-
-    The capture interface list is rendered from compute_slot_map (which now
-    matches the live FW + ansible layout: VLANs opt2..opt11, Proximus opt12,
-    Telenet opt13). Rendering from slot_map keeps capture = every internal + WAN
-    ident and egress_only = the WAN idents correct no matter how many VLANs the
-    seed defines, and guarantees the idents equal the running FW after a reseed.
-
-    Why the seed and not Ansible MVC: the OPNsense diagnostics/netflow/setconfig
-    endpoint is broken (returns {"result":"failed"} for every body shape) and root
-    SSH is blocked, so the capture config cannot be asserted over the API. The seed
-    writes config.xml directly, so it is the only reproducible home for it. On a
-    fresh boot OPNsense reads this block; collect.enable=1 starts the local Insight
-    aggregator (flowd_aggregate). Fields mirror the live getconfig model on
-    vm-opns-01: NetFlow v9 -> 127.0.0.1:2056. Tracks ansible-platform #31.
-    """
-
-    def _order(ident: str) -> tuple:
-        # Deterministic: OOB first, then optN by number, WAN/pppoe last.
-        if ident == "lan":
-            return (0, 0)
-        if ident.startswith("opt"):
-            return (1, int(ident[3:]))
-        return (2, 0)
-
-    wan_idents = [v for k, v in slot_map.items() if k in ("wan", "wan2", "wan_parent")]
-    # FAB (fabric MGMT, opt14) is NOT captured — mirrors the live prod capture list
-    # (lan,opt1..opt13); a management segment needs no flow accounting.
-    capture = sorted([v for k, v in slot_map.items() if k != "fab"], key=_order)
-    egress = sorted(wan_idents, key=_order)
-
-    opnsense = ET.Element("OPNsense")
-    nf = ET.SubElement(opnsense, "Netflow")
-    cap = ET.SubElement(nf, "capture")
-    ET.SubElement(cap, "interfaces").text = ",".join(capture)
-    ET.SubElement(cap, "egress_only").text = ",".join(egress)
-    ET.SubElement(cap, "version").text = "v9"
-    ET.SubElement(cap, "targets").text = "127.0.0.1:2056"
-    collect = ET.SubElement(nf, "collect")
-    ET.SubElement(collect, "enable").text = "1"
-    # OPNsense Netflow model defaults (live leaves them unset → these apply).
-    ET.SubElement(nf, "activeTimeout").text = "1800"
-    ET.SubElement(nf, "inactiveTimeout").text = "15"
-    return opnsense
 
 
 def _read_wan_creds(secret_path: str, supplied=None) -> dict:
@@ -996,21 +949,20 @@ def render_config(
     if gws is not None:
         root.append(gws)
 
-    # NetFlow/Insight capture block (plugin config lives under <OPNsense>).
-    # Idempotent: drop any prior <Netflow>, (re)attach the slot-map-rendered one,
-    # reusing an existing <OPNsense> parent if the baseline ever grows one.
-    netflow_parent = build_netflow(slot_map)
+    # <OPNsense> holds the MVC models the seed still owns. NetFlow used to be rendered here
+    # because diagnostics/netflow/setconfig did not save; since 26.7.5 it does, so the
+    # catalog declares the capture configuration (opnsense_netflow_settings) and the seed
+    # no longer carries it. A block left in a baseline by an older render is dropped.
     opnsense_node = root.find("OPNsense")
     if opnsense_node is None:
-        root.append(netflow_parent)
-    else:
-        old_nf = opnsense_node.find("Netflow")
-        if old_nf is not None:
-            opnsense_node.remove(old_nf)
-        opnsense_node.append(netflow_parent.find("Netflow"))
+        opnsense_node = ET.SubElement(root, "OPNsense")
+    old_nf = opnsense_node.find("Netflow")
+    if old_nf is not None:
+        opnsense_node.remove(old_nf)
 
-    # Global interface settings (IPv6 allowed, offloading off) under <OPNsense>.
-    opnsense_node = root.find("OPNsense")
+    # Global interface settings (IPv6 allowed, offloading off) under <OPNsense>: they have
+    # an API too, but must hold from the FIRST boot (checksum offloading on virtio breaks
+    # forwarded traffic), so they stay here.
     old_ifs = opnsense_node.find("Interfaces")
     if old_ifs is not None:
         opnsense_node.remove(old_ifs)
