@@ -597,11 +597,27 @@ Control the Dynamic DNS (os-ddclient) service; `restarted` publishes the active 
 
 ### opnsense_netflow_service
 
-Reconfigure the NetFlow / Insight exporter (the exporter configuration itself is seed-owned).
+Reconfigure the NetFlow / Insight exporter (its settings: `opnsense_netflow_settings`).
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `state` | str | no | reconfigured | `reconfigured` (only meaningful state) |
+
+### opnsense_netflow_settings
+
+Manage the NetFlow / Insight capture and collection settings (singleton — only the options you
+set are sent; interface lists are compared as sets). Needs OPNsense 26.7.5 or later: on earlier
+firmware `setconfig` did not save, which is why the seed used to carry this block.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `interfaces` | list | no | -- | Interface identifiers to capture (`lan`, `opt1`, …) |
+| `egress_only` | list | no | -- | Interfaces captured on egress only (the uplinks) |
+| `version` | str | no | -- | `v5` or `v9` |
+| `targets` | list | no | -- | Export targets `address:port` (local Insight collector: `127.0.0.1:2056`) |
+| `collect` | bool | no | -- | Run the local Insight collector |
+| `active_timeout / inactive_timeout` | str | no | -- | Flow export timeouts (s) |
+| `state` | str | no | present | Only `present` |
 
 ### opnsense_monit_settings
 

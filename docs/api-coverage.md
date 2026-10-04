@@ -104,6 +104,7 @@
 | Core | `opnsense_core_service` | `CoreServiceManager` | `name` | 26.1 | `DONE` |
 | Services | `opnsense_ddns_service` | `DdnsServiceManager` | -- (service) | 26.1 | `DONE` |
 | Services | `opnsense_netflow_service` | `NetflowServiceManager` | -- (service) | 26.1 | `DONE` |
+| Services | `opnsense_netflow_settings` | `NetflowSettingsManager` | -- (singleton) | 26.7.5 | `DONE` |
 | Monit | `opnsense_monit_settings` | `MonitSettingsManager` | -- (singleton `general`) | 26.1 | `DONE` |
 | Monit | `opnsense_monit_alert` | `MonitAlertManager` | `recipient` | 26.1 | `DONE` |
 | Monit | `opnsense_monit_test` | `MonitTestManager` | `name` | 26.1 | `DONE` |
